@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlMML 波形メモリメーカー (@10)</title>
+    <script src="https://unpkg.com/flmml-on-html5@2.0.3/dist/flmml-on-html5.js"></script>
+    <style>
+        :root {
+            --base-font-size: 16px;
+            --font-family: "Segoe UI", Meiryo, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            /* Define monospace font stack */
+            --monospace-font-family: Consolas, Menlo, Monaco, "Courier New", monospace;
+            --bg-color: #2f2f2f;
+            --panel-bg: #3c3c3c;
+            --card-bg: #4a4a4a;
+            --border-color: #5c5c5c;
+            --text-color: #e0e0e0;
+            --muted-text-color: #a0a0a0;
+            --primary-color: #4a90e2;
+            --primary-hover-color: #5aa1f2;
+            --secondary-color: #777777;
+            --secondary-hover-color: #8c8c8c;
+            --success-color: #5cb85c;
+            --preset-button-bg: #5a5a5a;
+            --preset-button-hover-bg: #6a6a6a;
+            --icon-button-size: 2.5rem;
+            --grid-line-color: #555555;
+            --grid-center-line-color: #888888;
+            --waveform-fill-color: rgba(74, 144, 226, 0.75);
+            --canvas-bg-color: #282828;
+            --box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            --border-radius: 6px;
+            --error-border-color: #dc3545;
+        }
+        html { font-size: var(--base-font-size); height: 100%; }
+        body { font-family: var(--font-family); background-color: var(--bg-color); color: var(--text-color); display: flex; flex-direction: column; margin: 0; padding: 1.5rem; height: 100%; box-sizing: border-box; overflow-x: hidden; }
+        h1 { margin: 0 0 1.5rem 0; color: var(--text-color); font-size: 1.8rem; font-weight: 600; text-align: center; width: 100%; }
+        .app-container { display: flex; flex-direction: row; gap: 1.5rem; width: 100%; flex-grow: 1; overflow: hidden; }
+        .left-panel { flex: 2; display: flex; flex-direction: column; min-width: 320px; gap: 1rem; }
+        .right-panel { flex: 1; display: flex; flex-direction: column; gap: 1.5rem; min-width: 300px; }
+        .card { background-color: var(--panel-bg); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1.5rem; display: flex; flex-direction: column; gap: 0.8rem; overflow: hidden; }
+        .left-panel .canvas-card { flex-grow: 1; }
+        label { font-weight: 600; margin-bottom: 0.3rem; display: block; font-size: 1rem; color: var(--muted-text-color); }
+        #waveformCanvas { border: 1px solid var(--border-color); cursor: crosshair; background-color: var(--canvas-bg-color); display: block; width: 100%; height: auto; aspect-ratio: 320 / 170; border-radius: calc(var(--border-radius) * 0.8); align-self: center; margin-bottom: 0.5rem; flex-shrink: 0; }
+        .info { font-size: 0.85rem; color: var(--muted-text-color); line-height: 1.4; }
+        textarea {
+            width: 100%;
+            /* Apply monospace font */
+            font-family: var(--monospace-font-family);
+            padding: 0.8rem; border: 1px solid var(--border-color); border-radius: calc(var(--border-radius) * 0.8); background-color: var(--card-bg); color: var(--text-color); resize: vertical; box-sizing: border-box; font-size: 0.9rem; flex-grow: 1; min-height: 8em;
+        }
+        #outputWaveform { min-height: 6em; flex-grow: 0; transition: border-color 0.2s ease-in-out; }
+        #outputWaveform.invalid { border-color: var(--error-border-color); }
+        #testMML { flex-grow: 1; }
+        button { padding: 0.6rem 1.1rem; cursor: pointer; border: none; border-radius: var(--border-radius); font-size: 0.95rem; font-weight: 600; transition: background-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out; background-color: var(--primary-color); color: white; }
+        button:hover { background-color: var(--primary-hover-color); box-shadow: 0 0 5px rgba(74, 144, 226, 0.5); }
+        button:active { background-color: #3a7bc8; }
+        #copyButton, #stopButton { background-color: var(--secondary-color); }
+        #copyButton:hover, #stopButton:hover { background-color: var(--secondary-hover-color); box-shadow: none; }
+        #copyButton.copied { background-color: var(--success-color); color: #ffffff; }
+        .button-group { display: flex; gap: 0.8rem; margin-top: 0.5rem; flex-wrap: wrap; }
+        .waveform-controls { display: flex; flex-direction: column; gap: 1rem; }
+        .preset-icons { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;}
+        .preset-icons button { background-color: var(--preset-button-bg); font-size: 1.2rem; font-weight: bold; line-height: 1; padding: 0; width: var(--icon-button-size); height: var(--icon-button-size); min-width: var(--icon-button-size); display: flex; justify-content: center; align-items: center; border: 1px solid var(--border-color); color: var(--text-color); transition: background-color 0.1s ease-in-out; }
+        .preset-icons button:hover { background-color: var(--preset-button-hover-bg); box-shadow: none; }
+        .preset-icons button#presetSquare { cursor: ew-resize; }
+        #resetWaveform { background-color: var(--secondary-color); font-size: 0.9rem; width: auto; white-space: nowrap; padding: 0.5rem 0.9rem; margin-left: auto; }
+        #resetWaveform:hover { background-color: var(--secondary-hover-color); box-shadow: none; }
+
+        /* Responsive Layout */
+        @media (max-width: 900px) {
+            body { padding: 1rem; height: auto; }
+            .app-container { flex-direction: column; overflow: visible; }
+            .left-panel, .right-panel { flex: none; width: 100%; min-width: unset; }
+            .left-panel .canvas-card { height: auto; }
+            h1 { font-size: 1.6rem; }
+            #resetWaveform { margin-left: 0; margin-top: 0.5rem; }
+            .preset-icons { justify-content: flex-start;}
+        }
+    </style>
+</head>
+<body>
+
+    <h1>FlMML 波形メモリメーカー (@10)</h1>
+
+    <div class="app-container">
+        <div class="left-panel">
+            <div class="card canvas-card">
+                <label for="waveformCanvas">波形グリッド</label>
+                <canvas id="waveformCanvas"></canvas>
+                <div class="info">
+                    クリックまたはドラッグして波形を描画します。<br>
+                    中央線は振幅0 (+/- 8段階) を表します。
+                </div>
+                <div class="waveform-controls">
+                    <div class="preset-icons">
+                         <label style="margin-right: 0.5rem; margin-bottom: 0;">サンプル:</label>
+                         <button id="presetSine" title="サイン波">〜</button>
+                         <button id="presetSaw" title="ノコギリ波">／</button>
+                         <button id="presetSquare" title="矩形波 (クリック:50%, ドラッグ:デューティ比変更)">П</button>
+                         <button id="presetTriangle" title="三角波">Λ</button>
+                         <button id="presetRandom" title="ランダム">?</button>
+                         <button id="resetWaveform">リセット</button>
+                     </div>
+                 </div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="card">
+                <label for="outputWaveform">生成/編集 #WAV10 文字列</label>
+                <textarea id="outputWaveform" rows="3"></textarea>
+                <button id="copyButton">コピー</button>
+                 <div class="info">
+                    Canvas操作で自動生成されますが、直接編集も可能です。<br>
+                    編集内容はCanvasに反映されます。（形式: `#WAV10 0,` + 16進数32文字、空白は自動除去）
+                </div>
+            </div>
+             <div class="card" style="flex-grow: 1;">
+                 <label for="testMML">テストMML</label>
+                 <textarea id="testMML">T120 L8 O5
+C D E F G A B < C</textarea>
+                 <div class="button-group">
+                     <button id="playButton">再生</button>
+                     <button id="stopButton">停止</button>
+                 </div>
+                 <div class="info">
+                     再生時、上記の「#WAV10 文字列」と `@10-0` がこのMMLの先頭に追加されます。
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        const canvas = document.getElementById('waveformCanvas');
+        const ctx = canvas.getContext('2d');
+        const outputWaveform = document.getElementById('outputWaveform');
+        const copyButton = document.getElementById('copyButton');
+        const testMMLTextarea = document.getElementById('testMML');
+        const playButton = document.getElementById('playButton');
+        const stopButton = document.getElementById('stopButton');
+        const presetSineBtn = document.getElementById('presetSine');
+        const presetSawBtn = document.getElementById('presetSaw');
+        const presetSquareBtn = document.getElementById('presetSquare');
+        const presetTriangleBtn = document.getElementById('presetTriangle');
+        const presetRandomBtn = document.getElementById('presetRandom');
+        const resetWaveformBtn = document.getElementById('resetWaveform');
+
+        const gridWidthCount = 32;
+        const gridHeightCount = 16;
+        const WAV_PREFIX = "#WAV10 0,";
+
+        let baseWidth = 320; let baseHeight = 170; let dpr = 1;
+        let cellWidth, stepHeight, centerY;
+
+        function setupCanvas() {
+            baseWidth = canvas.clientWidth; if (!baseWidth) { const style = getComputedStyle(canvas); baseWidth = parseInt(style.width) || 320; }
+            baseHeight = baseWidth * (170 / 320); dpr = window.devicePixelRatio || 1;
+            canvas.width = Math.round(baseWidth * dpr); canvas.height = Math.round(baseHeight * dpr);
+            ctx.resetTransform(); ctx.scale(dpr, dpr);
+            cellWidth = baseWidth / gridWidthCount; stepHeight = baseHeight / gridHeightCount; centerY = baseHeight / 2;
+        }
+
+        let waveformData = Array(gridWidthCount).fill(8);
+        let isDrawing = false;
+        let currentDuty = 50;
+        let isDraggingDuty = false;
+        let isSquareActive = false;
+
+        const flmml = new FlMML({ workerURL: 'https://unpkg.com/flmml-on-html5@2.0.3/dist/flmml-on-html5.worker.js', crossOriginWorker: true });
+
+        function drawGrid() {
+             ctx.clearRect(0, 0, baseWidth, baseHeight); ctx.lineWidth = 1 / dpr;
+             ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid-line-color').trim();
+             for (let i = 0; i <= gridWidthCount; i++) { const x = Math.round(i * cellWidth); ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, baseHeight); ctx.stroke(); }
+             for (let i = 0; i <= gridHeightCount; i++) { const y = Math.round(i * stepHeight); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(baseWidth, y); ctx.stroke(); }
+             ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid-center-line-color').trim();
+             ctx.lineWidth = Math.max(1, 2 / dpr); ctx.beginPath(); const centerLineY = Math.round(centerY); ctx.moveTo(0, centerLineY); ctx.lineTo(baseWidth, centerLineY); ctx.stroke();
+             ctx.lineWidth = 1 / dpr;
+        }
+        function drawWaveform() {
+             ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--waveform-fill-color').trim();
+             for (let i = 0; i < gridWidthCount; i++) {
+                 const value = waveformData[i]; const stepTopY = (gridHeightCount - 1 - value) * stepHeight; const stepBottomY = stepTopY + stepHeight;
+                 let rectYStart, rectHeight; if (value >= 8) { rectYStart = stepTopY; rectHeight = centerY - stepTopY; } else { rectYStart = centerY; rectHeight = stepBottomY - centerY; }
+                 const rectX = Math.round(i * cellWidth); const rectWidth = Math.round(cellWidth); const finalRectY = Math.round(rectYStart);
+                 const finalRectHeight = Math.max(1/dpr, Math.round(rectHeight)); const clippedY = Math.max(0, finalRectY); const clippedHeight = Math.min(baseHeight - clippedY, finalRectHeight);
+                 if (clippedHeight >= 1 / dpr) { ctx.fillRect(rectX, clippedY, rectWidth, clippedHeight); }
+             }
+        }
+
+        function updateOutputTextarea() {
+             const hexString = waveformData.map(val => val.toString(16).toUpperCase()).join(''); const fullString = WAV_PREFIX + hexString;
+             if (outputWaveform.value === fullString) return;
+             let cursorStart = -1; if (document.activeElement === outputWaveform) { try { cursorStart = outputWaveform.selectionStart; } catch (e) {} }
+             outputWaveform.value = fullString; outputWaveform.classList.remove('invalid');
+             if (cursorStart !== -1) { try { outputWaveform.setSelectionRange(cursorStart, cursorStart); } catch (e) {} }
+         }
+
+        function redraw() {
+             const cw = canvas.clientWidth; if(Math.round(baseWidth)!==Math.round(cw) && cw>0){ setupCanvas(); } else if(!cw && canvas.offsetParent===null){ return; }
+             drawGrid(); drawWaveform(); updateOutputTextarea();
+        }
+
+        // --- Preset Waveform Generators ---
+        function generateSine() { const data = []; const phaseOffset = -Math.PI / 2; for (let i = 0; i < gridWidthCount; i++) { const phase = (i / gridWidthCount) * 2 * Math.PI + phaseOffset; let v = Math.round((1 + Math.sin(phase)) / 2 * 15); data[i] = Math.max(0, Math.min(15, v)); } return data; }
+        function generateSaw() { const data = []; for (let i = 0; i < gridWidthCount; i++) { let v = Math.round(i / (gridWidthCount - 1) * 15); data[i] = Math.max(0, Math.min(15, v)); } return data; }
+        function generateSquare(dutyPercent = 50) { const data = []; const highSteps = Math.max(1, Math.min(gridWidthCount - 1, Math.round(gridWidthCount * dutyPercent / 100))); for (let i = 0; i < gridWidthCount; i++) { data[i] = (i < highSteps) ? 15 : 0; } return data; }
+        function generateTriangle() { const data = []; const half = gridWidthCount / 2; for (let i = 0; i < gridWidthCount; i++) { let v; if (i < half) { v = Math.round(i / (half - 1) * 15); } else { v = Math.round((gridWidthCount - 1 - i) / (half - 1) * 15); } data[i] = Math.max(0, Math.min(15, v)); } return data; }
+        function generateRandom() { const data = []; for (let i = 0; i < gridWidthCount; i++) { data[i] = Math.floor(Math.random() * 16); } return data; }
+
+        function applyPreset(type) {
+             isSquareActive = (type === 'square');
+             switch(type) {
+                 case 'sine': waveformData = generateSine(); break;
+                 case 'saw': waveformData = generateSaw(); break;
+                 case 'square': waveformData = generateSquare(currentDuty); break;
+                 case 'triangle': waveformData = generateTriangle(); break;
+                 case 'random': waveformData = generateRandom(); break;
+                 case 'reset': waveformData = Array(gridWidthCount).fill(8); currentDuty = 50; isSquareActive = false; break;
+             }
+             redraw();
+        }
+
+        // --- Event Listeners ---
+        function getMousePos(evt) { const rect = canvas.getBoundingClientRect(); const scaleX = baseWidth/rect.width; const scaleY = baseHeight/rect.height; return {x: (evt.clientX-rect.left)*scaleX, y: (evt.clientY-rect.top)*scaleY}; }
+        function handleDraw(evt) { if(!isDrawing) return; isSquareActive = false; const pos = getMousePos(evt); const gridX = Math.floor(pos.x/cellWidth); const value = Math.floor((baseHeight-pos.y)/stepHeight); const finalValue = Math.max(0, Math.min(15, value)); if(gridX>=0 && gridX<gridWidthCount) { if(waveformData[gridX]!==finalValue) { waveformData[gridX]=finalValue; redraw(); } } }
+        canvas.addEventListener('mousedown', (evt)=>{ if(evt.button!==0) return; isDrawing=true; canvas.style.cursor='crosshair'; handleDraw(evt); });
+        canvas.addEventListener('mousemove', handleDraw);
+        window.addEventListener('mouseup', (evt)=>{ if(isDrawing && evt.button===0){ isDrawing=false; canvas.style.cursor='crosshair'; } if(isDraggingDuty){ isDraggingDuty = false; presetSquareBtn.style.cursor = 'ew-resize'; document.body.style.cursor = 'default'; } });
+        window.addEventListener('mouseleave', () => { if(isDraggingDuty){ isDraggingDuty = false; presetSquareBtn.style.cursor = 'ew-resize'; document.body.style.cursor = 'default'; } });
+        window.addEventListener('touchend', (evt) => { if(isDraggingDuty){ isDraggingDuty = false; presetSquareBtn.style.cursor = 'ew-resize'; document.body.style.cursor = 'default'; } });
+        window.addEventListener('touchcancel', (evt) => { if(isDraggingDuty){ isDraggingDuty = false; presetSquareBtn.style.cursor = 'ew-resize'; document.body.style.cursor = 'default'; } });
+
+        copyButton.addEventListener('click', ()=>{ outputWaveform.select(); navigator.clipboard.writeText(outputWaveform.value).then(()=>{ copyButton.textContent='コピー完了!'; copyButton.classList.add('copied'); setTimeout(()=>{ copyButton.textContent='コピー'; copyButton.classList.remove('copied'); }, 1500); }).catch(err=>{ console.error('テキストのコピーに失敗: ', err); alert('テキストのコピーに失敗しました。'); }); });
+        playButton.addEventListener('click', ()=>{ const generatedWav = outputWaveform.value; const userMML = testMMLTextarea.value; const playbackMML = `${generatedWav}\n@10-0\n${userMML}`; console.log("再生MML:\n", playbackMML); try{ flmml.play(playbackMML); } catch (e) { console.error("FlMML 再生エラー:", e); alert("MMLの再生中にエラーが発生しました。コンソールを確認してください。"); } });
+        stopButton.addEventListener('click', ()=>{ flmml.stop(); });
+        presetSineBtn.addEventListener('click', () => applyPreset('sine'));
+        presetSawBtn.addEventListener('click', () => applyPreset('saw'));
+        presetTriangleBtn.addEventListener('click', () => applyPreset('triangle'));
+        presetRandomBtn.addEventListener('click', () => applyPreset('random'));
+        resetWaveformBtn.addEventListener('click', () => applyPreset('reset'));
+
+        // --- Duty Cycle Drag Logic ---
+        function updateDutyFromEvent(event) { const rect = presetSquareBtn.getBoundingClientRect(); const clientX = event.touches ? event.touches[0].clientX : event.clientX; const x = clientX - rect.left; let duty = Math.round((x / rect.width) * 100); duty = Math.max(5, Math.min(95, duty)); if (duty !== currentDuty || !isSquareActive) { currentDuty = duty; waveformData = generateSquare(currentDuty); isSquareActive = true; redraw(); presetSquareBtn.title = `矩形波 (デューティ比 ${currentDuty}%)`; } }
+        presetSquareBtn.addEventListener('mousedown', (e) => { e.preventDefault(); if (!isSquareActive) { currentDuty = 50; presetSquareBtn.title = `矩形波 (ドラッグでデューティ比変更)`; } isDraggingDuty = true; presetSquareBtn.style.cursor = 'grabbing'; document.body.style.cursor = 'ew-resize'; updateDutyFromEvent(e); });
+        presetSquareBtn.addEventListener('touchstart', (e) => { e.preventDefault(); if (!isSquareActive) { currentDuty = 50; presetSquareBtn.title = `矩形波 (ドラッグでデューティ比変更)`; } isDraggingDuty = true; updateDutyFromEvent(e); }, { passive: false });
+        window.addEventListener('mousemove', (e) => { if (isDraggingDuty) { updateDutyFromEvent(e); } });
+        window.addEventListener('touchmove', (e) => { if (isDraggingDuty) { updateDutyFromEvent(e); } }, { passive: false });
+
+        // --- Textarea Input Synchronization ---
+        outputWaveform.addEventListener('input', (event) => {
+            const text = outputWaveform.value;
+            let currentCursorPos = -1;
+            try { currentCursorPos = outputWaveform.selectionStart; } catch(e) {}
+
+            if (text.startsWith(WAV_PREFIX)) {
+                let hexPart = text.substring(WAV_PREFIX.length);
+                const cleanedHexPart = hexPart.replace(/\s+/g, ''); // Remove whitespace
+
+                // If cleaning changed the text, update the textarea value
+                if (hexPart !== cleanedHexPart) {
+                    const diff = hexPart.length - cleanedHexPart.length;
+                    outputWaveform.value = WAV_PREFIX + cleanedHexPart;
+                    // Restore cursor position after removing spaces
+                    if (currentCursorPos !== -1) {
+                         const newCursorPos = Math.max(WAV_PREFIX.length, currentCursorPos - diff);
+                         try { outputWaveform.setSelectionRange(newCursorPos, newCursorPos); } catch (e) {}
+                     }
+                     hexPart = cleanedHexPart; // Use cleaned part for further processing
+                }
+
+                 if (hexPart.length === 32 && /^[0-9a-fA-F]+$/.test(hexPart)) {
+                    outputWaveform.classList.remove('invalid');
+                     const newData = []; let changed = false;
+                     for (let i = 0; i < 32; i++) { const newVal = parseInt(hexPart[i], 16); newData.push(newVal); if (waveformData[i] !== newVal) changed = true; }
+                     if (changed) { waveformData = newData; isSquareActive = false; drawGrid(); drawWaveform(); } // Redraw canvas only
+                 } else { outputWaveform.classList.add('invalid'); }
+             } else { outputWaveform.classList.add('invalid'); }
+        });
+
+        // --- Initial Setup & Draw ---
+        let isInitialized = false; const initObserver = new ResizeObserver(()=>{ if(!isInitialized && canvas.clientWidth > 0){ setupCanvas(); redraw(); isInitialized = true; } else if(isInitialized && canvas.clientWidth > 0){ redraw(); } });
+        initObserver.observe(canvas); window.addEventListener('load', ()=>{ if(!isInitialized){ console.warn("Fallback: Initializing on window.load"); setupCanvas(); redraw(); isInitialized = true; } });
+
+    </script>
+
+</body>
+</html>
