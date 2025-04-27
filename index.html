@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FlMML 波形メモリメーカー (@10)</title>
+    <title>FlMML 波形メモリメーカー (@10/@13)</title>
     <script src="https://unpkg.com/flmml-on-html5@2.0.3/dist/flmml-on-html5.js"></script>
     <style>
+        /* :root と基本的なスタイルは同じ */
         :root {
             --base-font-size: 16px;
             --font-family: "Segoe UI", Meiryo, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -36,12 +37,22 @@
         body { font-family: var(--font-family); background-color: var(--bg-color); color: var(--text-color); display: flex; flex-direction: column; margin: 0; padding: 1.5rem; height: 100%; box-sizing: border-box; overflow-x: hidden; }
         h1 { margin: 0 0 1.5rem 0; color: var(--text-color); font-size: 1.8rem; font-weight: 600; text-align: center; width: 100%; }
         .app-container { display: flex; flex-direction: row; gap: 1.5rem; width: 100%; flex-grow: 1; overflow: hidden; }
-        .left-panel { flex: 2; display: flex; flex-direction: column; min-width: 300px; /* Slightly reduced min-width */ gap: 1rem; }
-        .right-panel { flex: 1; display: flex; flex-direction: column; gap: 1.5rem; min-width: 280px; /* Slightly reduced min-width */ }
+        .left-panel { flex: 2; display: flex; flex-direction: column; min-width: 300px; gap: 1rem; }
+        .right-panel { flex: 1; display: flex; flex-direction: column; gap: 1.5rem; min-width: 280px; }
         .card { background-color: var(--panel-bg); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1.5rem; display: flex; flex-direction: column; gap: 0.8rem; overflow: hidden; }
-        .left-panel .canvas-card { flex-grow: 1; padding: 1rem; /* Default padding for canvas card */ }
+        .left-panel .canvas-card { flex-grow: 1; padding: 1rem; }
         label { font-weight: 600; margin-bottom: 0.3rem; display: block; font-size: 1rem; color: var(--muted-text-color); }
-        #waveformCanvas { border: 1px solid var(--border-color); cursor: crosshair; background-color: var(--canvas-bg-color); display: block; width: 100%; height: auto; aspect-ratio: 320 / 170; border-radius: calc(var(--border-radius) * 0.8); align-self: center; margin-bottom: 0.5rem; flex-shrink: 0; touch-action: none; /* Prevent browser default touch actions like scroll/zoom on canvas */ }
+        .label-inline { display: inline-block; margin-right: 0.5rem; margin-bottom: 0; vertical-align: middle; } /* Align vertically */
+        select, input[type="number"], input[type="radio"] + label { /* Apply vertical align */
+            vertical-align: middle;
+        }
+        select, input[type="number"] { background-color: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: calc(var(--border-radius) * 0.8); padding: 0.4rem 0.6rem; font-size: 0.9rem; }
+        input[type="number"] { width: 5em; }
+        select { min-width: 8em; }
+        input[type="radio"] { margin-right: 0.2em; vertical-align: middle;} /* Style radio buttons */
+
+
+        #waveformCanvas { border: 1px solid var(--border-color); cursor: crosshair; background-color: var(--canvas-bg-color); display: block; width: 100%; height: auto; aspect-ratio: 320 / 170; border-radius: calc(var(--border-radius) * 0.8); align-self: center; margin-bottom: 0.5rem; flex-shrink: 0; touch-action: none; }
         .info { font-size: 0.85rem; color: var(--muted-text-color); line-height: 1.4; }
         textarea { width: 100%; font-family: var(--monospace-font-family); padding: 0.8rem; border: 1px solid var(--border-color); border-radius: calc(var(--border-radius) * 0.8); background-color: var(--card-bg); color: var(--text-color); resize: vertical; box-sizing: border-box; font-size: 0.9rem; flex-grow: 1; min-height: 8em; }
         #outputWaveform { min-height: 6em; flex-grow: 0; transition: border-color 0.2s ease-in-out; }
@@ -55,6 +66,10 @@
         #copyButton.copied { background-color: var(--success-color); color: #ffffff; }
         .button-group { display: flex; gap: 0.8rem; margin-top: 0.5rem; flex-wrap: wrap; }
         .waveform-controls { display: flex; flex-direction: column; gap: 1rem; }
+        .mode-settings { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1rem;} /* Group settings */
+        #lengthControl, #resolutionControl { display: none; } /* Hide controls initially */
+        .edit-mode-settings { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; } /* Edit mode section */
+
         .preset-icons { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;}
         .preset-icons button { background-color: var(--preset-button-bg); font-size: 1.2rem; font-weight: bold; line-height: 1; padding: 0; width: var(--icon-button-size); height: var(--icon-button-size); min-width: var(--icon-button-size); display: flex; justify-content: center; align-items: center; border: 1px solid var(--border-color); color: var(--text-color); transition: background-color 0.1s ease-in-out; }
         .preset-icons button:hover { background-color: var(--preset-button-hover-bg); box-shadow: none; }
@@ -63,46 +78,62 @@
         #resetWaveform:hover { background-color: var(--secondary-hover-color); box-shadow: none; }
 
         /* Responsive Layout */
-        @media (max-width: 900px) { /* Tablet and smaller */
-            body { padding: 1rem; height: auto; }
-            .app-container { flex-direction: column; overflow: visible; }
-            .left-panel, .right-panel { flex: none; width: 100%; min-width: unset; }
-            .left-panel .canvas-card { height: auto; }
-            h1 { font-size: 1.6rem; }
-            #resetWaveform { margin-left: 0; margin-top: 0.5rem; }
-            .preset-icons { justify-content: flex-start;}
-        }
-         @media (max-width: 600px) { /* Phone portrait */
-             .left-panel .canvas-card {
-                 padding-left: 0.5rem; /* Reduce padding on mobile */
-                 padding-right: 0.5rem;
-             }
-             .card {
-                 padding: 1rem; /* Reduce card padding generally */
-             }
-             h1 { font-size: 1.4rem; }
-             button { padding: 0.5rem 0.9rem; font-size: 0.9rem; }
-              .preset-icons button { width: calc(var(--icon-button-size) * 0.9); height: calc(var(--icon-button-size) * 0.9); min-width: calc(var(--icon-button-size) * 0.9); font-size: 1rem; }
-             #resetWaveform { padding: 0.4rem 0.8rem; font-size: 0.85rem; }
-         }
+        @media (max-width: 900px) { body { padding: 1rem; height: auto; } .app-container { flex-direction: column; overflow: visible; } .left-panel, .right-panel { flex: none; width: 100%; min-width: unset; } .left-panel .canvas-card { height: auto; } h1 { font-size: 1.6rem; } #resetWaveform { margin-left: 0; margin-top: 0.5rem; } .preset-icons { justify-content: flex-start;} .mode-settings, .edit-mode-settings { gap: 0.5rem; } }
+        @media (max-width: 600px) { .left-panel .canvas-card { padding-left: 0.5rem; padding-right: 0.5rem; } .card { padding: 1rem; } h1 { font-size: 1.4rem; } button { padding: 0.5rem 0.9rem; font-size: 0.9rem; } .preset-icons button { width: calc(var(--icon-button-size) * 0.9); height: calc(var(--icon-button-size) * 0.9); min-width: calc(var(--icon-button-size) * 0.9); font-size: 1rem; } #resetWaveform { padding: 0.4rem 0.8rem; font-size: 0.85rem; } select, input[type="number"] { font-size: 0.85rem; padding: 0.3rem 0.5rem; } }
     </style>
 </head>
 <body>
 
-    <h1>FlMML 波形メモリメーカー (@10)</h1>
+    <h1>FlMML 波形メモリメーカー (@10/@13)</h1>
 
     <div class="app-container">
         <div class="left-panel">
-             <div class="card canvas-card">
-                <label for="waveformCanvas">波形グリッド</label>
+            <div class="card canvas-card">
+                 <div class="mode-settings">
+                      <div>
+                          <label for="wavMode" class="label-inline">データモード:</label>
+                          <select id="wavMode">
+                              <option value="wav10" selected>WAV10 (4bit, 32step)</option>
+                              <option value="wav13">WAV13 (8bit, 可変長)</option>
+                          </select>
+                      </div>
+                      <div id="lengthControl">
+                          <label for="wavLength" class="label-inline">サンプル長:</label>
+                          <input type="number" id="wavLength" min="1" max="1024" value="32">
+                      </div>
+                      <div id="resolutionControl">
+                          <label for="wavResolution" class="label-inline">解像度:</label>
+                          <select id="wavResolution">
+                              <option value="256" selected>256段階 (8bit)</option>
+                              <option value="128">128段階 (7bit)</option>
+                              <option value="64">64段階 (6bit)</option>
+                              <option value="32">32段階 (5bit)</option>
+                              <option value="16">16段階 (4bit)</option>
+                          </select>
+                      </div>
+                  </div><!--
+                  <div class="edit-mode-settings">
+                     <label class="label-inline">編集モード:</label>
+                     <div>
+                         <input type="radio" id="editModeGrid" name="editMode" value="grid" checked>
+                         <label for="editModeGrid" class="label-inline">グリッド</label>
+                     </div>
+                     <div>
+                         <input type="radio" id="editModeBezier" name="editMode" value="bezier">
+                         <label for="editModeBezier" class="label-inline">ベジェ (未実装)</label>
+                     </div>
+                 </div>-->
+
+
+                <label for="waveformCanvas" style="margin-top: 0.5rem;">波形グリッド</label>
                 <canvas id="waveformCanvas"></canvas>
                 <div class="info">
                     クリックまたはドラッグ/スワイプして波形を描画します。<br>
-                    中央線は振幅0 (+/- 8段階) を表します。
+                    中央線は振幅0を表します。
                 </div>
                 <div class="waveform-controls">
                     <div class="preset-icons">
-                         <label style="margin-right: 0.5rem; margin-bottom: 0;">サンプル:</label>
+                         <label class="label-inline">サンプル:</label>
                          <button id="presetSine" title="サイン波">〜</button>
                          <button id="presetSaw" title="ノコギリ波">／</button>
                          <button id="presetSquare" title="矩形波 (クリック:50%, ドラッグ:デューティ比変更)">П</button>
@@ -116,12 +147,12 @@
 
         <div class="right-panel">
             <div class="card">
-                <label for="outputWaveform">生成/編集 #WAV10 文字列</label>
+                <label for="outputWaveform">生成/編集 <span id="outputModeLabel">#WAV10</span> 文字列</label>
                 <textarea id="outputWaveform" rows="3"></textarea>
                 <button id="copyButton">コピー</button>
                  <div class="info">
                     Canvas操作で自動生成されますが、直接編集も可能です。<br>
-                    編集内容はCanvasに反映されます。（形式: `#WAV10 0,` + 16進数32文字、空白は自動除去）
+                    編集内容はCanvasに反映されます。(空白は自動除去)
                 </div>
             </div>
              <div class="card" style="flex-grow: 1;">
@@ -133,12 +164,11 @@ C D E F G A B < C</textarea>
                      <button id="stopButton">停止</button>
                  </div>
                  <div class="info">
-                     再生時、上記の「#WAV10 文字列」と `@10-0` がこのMMLの先頭に追加されます。
+                     再生時、上記の生成/編集された波形定義と <span id="playbackInstrumentLabel">@10-0</span> がこのMMLの先頭に追加されます。
                 </div>
             </div>
         </div>
     </div>
-
 
     <script>
         const canvas = document.getElementById('waveformCanvas');
@@ -154,152 +184,206 @@ C D E F G A B < C</textarea>
         const presetTriangleBtn = document.getElementById('presetTriangle');
         const presetRandomBtn = document.getElementById('presetRandom');
         const resetWaveformBtn = document.getElementById('resetWaveform');
+        const wavModeSelect = document.getElementById('wavMode');
+        const lengthControlDiv = document.getElementById('lengthControl');
+        const wavLengthInput = document.getElementById('wavLength');
+        const resolutionControlDiv = document.getElementById('resolutionControl');
+        const wavResolutionSelect = document.getElementById('wavResolution');
+        const outputModeLabel = document.getElementById('outputModeLabel');
+        const playbackInstrumentLabel = document.getElementById('playbackInstrumentLabel');
+        // Edit Mode Radio Buttons
+        const editModeRadios = document.querySelectorAll('input[name="editMode"]');
 
-        const gridWidthCount = 32;
-        const gridHeightCount = 16;
-        const WAV_PREFIX = "#WAV10 0,";
 
+        // --- State Variables ---
+        let currentWavMode = 'wav10'; // 'wav10' or 'wav13'
+        let currentEditMode = 'grid'; // 'grid' or 'bezier'
+        let currentLength = 32; let currentResolution = 16;
+        let currentMaxValue = 15; let currentCenterValue = 8; let currentQuantizeLevels = 16;
+        let waveformData = [];
         let baseWidth = 320; let baseHeight = 170; let dpr = 1;
         let cellWidth, stepHeight, centerY;
+        let isDrawing = false; let currentDuty = 50; let isDraggingDuty = false; let isSquareActive = false;
+        let lastDrawX = null; let lastDrawY = null;
+
+        const flmml = new FlMML({ workerURL: 'https://unpkg.com/flmml-on-html5@2.0.3/dist/flmml-on-html5.worker.js', crossOriginWorker: true });
+
+        // --- Quantization Function ---
+        function quantizeValue(rawValue) { /* ... (same) ... */
+             if (currentWavMode === 'wav10' || currentQuantizeLevels >= 256) { return Math.max(0, Math.min(currentMaxValue, Math.round(rawValue))); }
+             const step = currentMaxValue / (currentQuantizeLevels - 1); const quantized = Math.round(rawValue / step) * step;
+             return Math.max(0, Math.min(currentMaxValue, Math.round(quantized)));
+         }
+
+        // --- Initialization and Mode Change ---
+        function initializeWaveform() {
+            currentWavMode = wavModeSelect.value;
+            const isWav13 = currentWavMode === 'wav13';
+            outputModeLabel.textContent = isWav13 ? '#WAV13' : '#WAV10';
+            playbackInstrumentLabel.textContent = isWav13 ? '@13-0' : '@10-0';
+
+            if (isWav13) {
+                currentLength = parseInt(wavLengthInput.value) || 64; currentLength = Math.max(1, Math.min(1024, currentLength)); wavLengthInput.value = currentLength;
+                currentResolution = 256; currentMaxValue = 255; currentCenterValue = 128;
+                currentQuantizeLevels = parseInt(wavResolutionSelect.value) || 256;
+                lengthControlDiv.style.display = 'flex'; resolutionControlDiv.style.display = 'flex';
+            } else {
+                currentLength = 32; currentResolution = 16; currentMaxValue = 15; currentCenterValue = 8; currentQuantizeLevels = 16;
+                lengthControlDiv.style.display = 'none'; wavLengthInput.value = 32; resolutionControlDiv.style.display = 'none'; wavResolutionSelect.value = "256";
+            }
+            waveformData = new Array(currentLength).fill(currentCenterValue);
+            isSquareActive = false; currentDuty = 50;
+
+            setupCanvas(); updateEventListeners(); redraw();
+        }
 
         function setupCanvas() { /* ... (same) ... */
             baseWidth = canvas.clientWidth; if (!baseWidth) { const style = getComputedStyle(canvas); baseWidth = parseInt(style.width) || 320; }
             baseHeight = baseWidth * (170 / 320); dpr = window.devicePixelRatio || 1;
             canvas.width = Math.round(baseWidth * dpr); canvas.height = Math.round(baseHeight * dpr);
             ctx.resetTransform(); ctx.scale(dpr, dpr);
-            cellWidth = baseWidth / gridWidthCount; stepHeight = baseHeight / gridHeightCount; centerY = baseHeight / 2;
+            cellWidth = baseWidth / currentLength; stepHeight = baseHeight / currentResolution; centerY = baseHeight / 2;
         }
 
-        let waveformData = Array(gridWidthCount).fill(8);
-        let isDrawing = false;
-        let currentDuty = 50;
-        let isDraggingDuty = false;
-        let isSquareActive = false;
 
-        const flmml = new FlMML({ workerURL: 'https://unpkg.com/flmml-on-html5@2.0.3/dist/flmml-on-html5.worker.js', crossOriginWorker: true });
-
-        function drawGrid() { /* ... (same) ... */
+        // --- Drawing Functions ---
+        function drawGrid() { /* ... (same, uses currentQuantizeLevels for h-lines) ... */
              ctx.clearRect(0, 0, baseWidth, baseHeight); ctx.lineWidth = 1 / dpr;
-             ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid-line-color').trim();
-             for (let i = 0; i <= gridWidthCount; i++) { const x = Math.round(i * cellWidth); ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, baseHeight); ctx.stroke(); }
-             for (let i = 0; i <= gridHeightCount; i++) { const y = Math.round(i * stepHeight); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(baseWidth, y); ctx.stroke(); }
-             ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--grid-center-line-color').trim();
-             ctx.lineWidth = Math.max(1, 2 / dpr); ctx.beginPath(); const centerLineY = Math.round(centerY); ctx.moveTo(0, centerLineY); ctx.lineTo(baseWidth, centerLineY); ctx.stroke();
+             const gridLineColor = getComputedStyle(document.documentElement).getPropertyValue('--grid-line-color').trim();
+             const centerLineColor = getComputedStyle(document.documentElement).getPropertyValue('--grid-center-line-color').trim();
+             const vLineStep = currentLength <= 64 ? 1 : (currentLength <= 128 ? 2 : (currentLength <= 256 ? 4 : 8));
+             ctx.strokeStyle = gridLineColor;
+             for (let i = 0; i <= currentLength; i += vLineStep) { const x = Math.round(i * cellWidth); ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, baseHeight); ctx.stroke(); }
+             if (currentLength % vLineStep !== 0) { const x = Math.round(currentLength * cellWidth); ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, baseHeight); ctx.stroke(); }
+             const hLineRes = (currentWavMode === 'wav13' && currentQuantizeLevels < 256) ? currentQuantizeLevels : currentResolution;
+             const hStepHeight = baseHeight / hLineRes;
+             for (let i = 0; i <= hLineRes; i ++) { const y = Math.round(i * hStepHeight); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(baseWidth, y); ctx.stroke(); }
+             ctx.strokeStyle = centerLineColor; ctx.lineWidth = Math.max(1, 2 / dpr); ctx.beginPath(); const centerLineY = Math.round(centerY); ctx.moveTo(0, centerLineY); ctx.lineTo(baseWidth, centerLineY); ctx.stroke();
              ctx.lineWidth = 1 / dpr;
         }
         function drawWaveform() { /* ... (same) ... */
              ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--waveform-fill-color').trim();
-             for (let i = 0; i < gridWidthCount; i++) {
-                 const value = waveformData[i]; const stepTopY = (gridHeightCount - 1 - value) * stepHeight; const stepBottomY = stepTopY + stepHeight;
-                 let rectYStart, rectHeight; if (value >= 8) { rectYStart = stepTopY; rectHeight = centerY - stepTopY; } else { rectYStart = centerY; rectHeight = stepBottomY - centerY; }
-                 const rectX = Math.round(i * cellWidth); const rectWidth = Math.round(cellWidth); const finalRectY = Math.round(rectYStart);
-                 const finalRectHeight = Math.max(1/dpr, Math.round(rectHeight)); const clippedY = Math.max(0, finalRectY); const clippedHeight = Math.min(baseHeight - clippedY, finalRectHeight);
+             for (let i = 0; i < currentLength; i++) {
+                 const value = (i < waveformData.length) ? waveformData[i] : currentCenterValue; const stepTopY = (currentResolution - 1 - value) * stepHeight; const stepBottomY = stepTopY + stepHeight;
+                 let rectYStart, rectHeight; if (value >= currentCenterValue) { rectYStart = stepTopY; rectHeight = centerY - stepTopY; } else { rectYStart = centerY; rectHeight = stepBottomY - centerY; }
+                 const rectX = Math.round(i * cellWidth); const rectWidth = Math.max(1 / dpr, Math.round((i + 1) * cellWidth) - rectX);
+                 const finalRectY = Math.round(rectYStart); const finalRectHeight = Math.max(1/dpr, Math.round(rectHeight));
+                 const clippedY = Math.max(0, finalRectY); const clippedHeight = Math.min(baseHeight - clippedY, finalRectHeight);
                  if (clippedHeight >= 1 / dpr) { ctx.fillRect(rectX, clippedY, rectWidth, clippedHeight); }
              }
         }
-
         function updateOutputTextarea() { /* ... (same) ... */
-             const hexString = waveformData.map(val => val.toString(16).toUpperCase()).join(''); const fullString = WAV_PREFIX + hexString;
-             if (outputWaveform.value === fullString) return;
+             let hexString; const prefix = currentWavMode === 'wav10' ? "#WAV10 0," : "#WAV13 0,";
+             if (currentWavMode === 'wav10') { hexString = waveformData.map(val => val.toString(16).toUpperCase()).join(''); }
+             else { hexString = waveformData.map(val => val.toString(16).toUpperCase().padStart(2, '0')).join(''); }
+             const fullString = prefix + hexString; if (outputWaveform.value === fullString) return;
              let cursorStart = -1; if (document.activeElement === outputWaveform) { try { cursorStart = outputWaveform.selectionStart; } catch (e) {} }
              outputWaveform.value = fullString; outputWaveform.classList.remove('invalid');
              if (cursorStart !== -1) { try { outputWaveform.setSelectionRange(cursorStart, cursorStart); } catch (e) {} }
          }
-
-        function redraw() { /* ... (same) ... */
-             const cw = canvas.clientWidth; if(Math.round(baseWidth)!==Math.round(cw) && cw>0){ setupCanvas(); } else if(!cw && canvas.offsetParent===null){ return; }
-             drawGrid(); drawWaveform(); updateOutputTextarea();
-        }
+        function redraw() { const cw = canvas.clientWidth; if(Math.round(baseWidth)!==Math.round(cw) && cw>0){ setupCanvas(); } else if(!cw && canvas.offsetParent===null){ return; } drawGrid(); drawWaveform(); updateOutputTextarea(); }
 
         // --- Preset Waveform Generators ---
-        function generateSine() { /* ... (same) ... */ const data = []; const phaseOffset = -Math.PI / 2; for (let i = 0; i < gridWidthCount; i++) { const phase = (i / gridWidthCount) * 2 * Math.PI + phaseOffset; let v = Math.round((1 + Math.sin(phase)) / 2 * 15); data[i] = Math.max(0, Math.min(15, v)); } return data; }
-        function generateSaw() { /* ... (same) ... */ const data = []; for (let i = 0; i < gridWidthCount; i++) { let v = Math.round(i / (gridWidthCount - 1) * 15); data[i] = Math.max(0, Math.min(15, v)); } return data; }
-        function generateSquare(dutyPercent = 50) { /* ... (same) ... */ const data = []; const highSteps = Math.max(1, Math.min(gridWidthCount - 1, Math.round(gridWidthCount * dutyPercent / 100))); for (let i = 0; i < gridWidthCount; i++) { data[i] = (i < highSteps) ? 15 : 0; } return data; }
-        function generateTriangle() { /* ... (same) ... */ const data = []; const half = gridWidthCount / 2; for (let i = 0; i < gridWidthCount; i++) { let v; if (i < half) { v = Math.round(i / (half - 1) * 15); } else { v = Math.round((gridWidthCount - 1 - i) / (half - 1) * 15); } data[i] = Math.max(0, Math.min(15, v)); } return data; }
-        function generateRandom() { /* ... (same) ... */ const data = []; for (let i = 0; i < gridWidthCount; i++) { data[i] = Math.floor(Math.random() * 16); } return data; }
-
-        function applyPreset(type) { /* ... (same) ... */
-             isSquareActive = (type === 'square');
-             switch(type) {
-                 case 'sine': waveformData = generateSine(); break;
-                 case 'saw': waveformData = generateSaw(); break;
-                 case 'square': waveformData = generateSquare(currentDuty); break;
-                 case 'triangle': waveformData = generateTriangle(); break;
-                 case 'random': waveformData = generateRandom(); break;
-                 case 'reset': waveformData = Array(gridWidthCount).fill(8); currentDuty = 50; isSquareActive = false; break;
-             }
-             redraw();
-        }
+        function generateSine() { /* ... (applies quantization) ... */ const data = new Array(currentLength); const phaseOffset = -Math.PI / 2; for (let i = 0; i < currentLength; i++) { const phase = (i / currentLength) * 2 * Math.PI + phaseOffset; let v = (1 + Math.sin(phase)) / 2 * currentMaxValue; data[i] = quantizeValue(v); } return data; }
+        function generateSaw() { /* ... (applies quantization) ... */ const data = new Array(currentLength); for (let i = 0; i < currentLength; i++) { let v = i / (currentLength - 1 || 1) * currentMaxValue; data[i] = quantizeValue(v); } return data; }
+        function generateSquare(dutyPercent = 50) { /* ... (applies quantization) ... */ const data = new Array(currentLength); const highSteps = Math.max(1, Math.min(currentLength - 1, Math.round(currentLength * dutyPercent / 100))); for (let i = 0; i < currentLength; i++) { let v = (i < highSteps) ? currentMaxValue : 0; data[i] = quantizeValue(v); } return data; }
+        function generateTriangle() { /* ... (applies quantization) ... */ const data = new Array(currentLength); const half = currentLength / 2; for (let i = 0; i < currentLength; i++) { let v; if (i < half) { v = i / (half - 1 || 1) * currentMaxValue; } else { v = (currentLength - 1 - i) / (half - 1 || 1) * currentMaxValue; } data[i] = quantizeValue(v); } return data; }
+        function generateRandom() { /* ... (applies quantization) ... */ const data = new Array(currentLength); for (let i = 0; i < currentLength; i++) { let v = Math.random() * (currentMaxValue + 1); data[i] = quantizeValue(v); } return data; }
+        function applyPreset(type) { /* ... (same) ... */ isSquareActive = (type === 'square'); switch(type) { case 'sine': waveformData = generateSine(); break; case 'saw': waveformData = generateSaw(); break; case 'square': waveformData = generateSquare(currentDuty); break; case 'triangle': waveformData = generateTriangle(); break; case 'random': waveformData = generateRandom(); break; case 'reset': waveformData = new Array(currentLength).fill(currentCenterValue); currentDuty = 50; isSquareActive = false; break; } redraw(); }
 
 
         // --- Event Listeners ---
-        // Function to get coordinates from mouse or touch event
-        function getEventCoords(event) {
-             const rect = canvas.getBoundingClientRect();
-             const scaleX = baseWidth / rect.width;
-             const scaleY = baseHeight / rect.height;
-             let clientX, clientY;
-             if (event.touches && event.touches.length > 0) {
-                 clientX = event.touches[0].clientX;
-                 clientY = event.touches[0].clientY;
-             } else {
-                 clientX = event.clientX;
-                 clientY = event.clientY;
-             }
-             return {
-                 x: (clientX - rect.left) * scaleX,
-                 y: (clientY - rect.top) * scaleY
-             };
-         }
+        function getEventCoords(event) { /* ... (same) ... */ const rect = canvas.getBoundingClientRect(); const scaleX = baseWidth/rect.width; const scaleY = baseHeight/rect.height; let clientX, clientY; if (event.touches && event.touches.length > 0) { clientX = event.touches[0].clientX; clientY = event.touches[0].clientY; } else { clientX = event.clientX; clientY = event.clientY; } return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY }; }
 
-        function handleDraw(event) { // Unified handler for mouse/touch draw
-            if(!isDrawing) return;
-            isSquareActive = false; // Manual edit deactivates square mode
+        // --- Draw Handler with Interpolation & Quantization ---
+        function handleGridDraw(event) { // Renamed for clarity
+            if (!isDrawing) return;
+            isSquareActive = false;
             const pos = getEventCoords(event);
-            const gridX = Math.floor(pos.x/cellWidth);
-            const value = Math.floor((baseHeight-pos.y)/stepHeight);
-            const finalValue = Math.max(0, Math.min(15, value));
-            if(gridX>=0 && gridX<gridWidthCount) {
-                if(waveformData[gridX]!==finalValue) {
-                    waveformData[gridX]=finalValue;
-                    redraw();
+            const currentX = pos.x; const currentY = pos.y; let dataChanged = false;
+
+            if (lastDrawX !== null && lastDrawY !== null) {
+                const x0 = lastDrawX; const y0 = lastDrawY; const x1 = currentX; const y1 = currentY;
+                let startIndex = Math.floor(x0 / cellWidth); let endIndex = Math.floor(x1 / cellWidth);
+                startIndex = Math.max(0, Math.min(currentLength - 1, startIndex)); endIndex = Math.max(0, Math.min(currentLength - 1, endIndex));
+                if (startIndex > endIndex) { [startIndex, endIndex] = [endIndex, startIndex]; }
+
+                for (let i = startIndex; i <= endIndex; i++) {
+                    const targetX = i * cellWidth;
+                    let t; if (x1 === x0) { t = 0; } else { t = (targetX - x0) / (x1 - x0); t = Math.max(0, Math.min(1, t)); }
+                    const interpolatedY = y0 + (y1 - y0) * t;
+                    const rawValue = (baseHeight - interpolatedY) / stepHeight;
+                    const finalValue = quantizeValue(rawValue); // Apply quantization
+
+                    if (i >= 0 && i < currentLength && waveformData[i] !== finalValue) { waveformData[i] = finalValue; dataChanged = true; }
                 }
+            } else {
+                const gridX = Math.floor(currentX / cellWidth); const rawValue = (baseHeight - currentY) / stepHeight; const finalValue = quantizeValue(rawValue);
+                if(gridX >= 0 && gridX < currentLength) { if(waveformData[gridX] !== finalValue) { waveformData[gridX] = finalValue; dataChanged = true; } }
             }
+            lastDrawX = currentX; lastDrawY = currentY; if (dataChanged) { redraw(); }
         }
 
-        // --- Canvas Draw Listeners (Mouse + Touch) ---
-        canvas.addEventListener('mousedown', (evt)=>{ if(evt.button!==0) return; isDrawing=true; canvas.style.cursor='crosshair'; handleDraw(evt); });
-        canvas.addEventListener('mousemove', (evt)=>{ if(isDrawing) { handleDraw(evt); } });
-        // Use window/document for mouseup to catch events outside canvas
-        window.addEventListener('mouseup', (evt)=>{ if(isDrawing && evt.button === 0){ isDrawing=false; canvas.style.cursor='crosshair'; } });
+        // Placeholder for Bezier drawing handler
+        function handleBezierDraw(event) {
+             console.log("Bezier drawing not yet implemented.", event);
+             // TODO: Add logic for manipulating Bezier points/handles
+         }
 
-        canvas.addEventListener('touchstart', (evt)=>{
-            if (evt.touches.length === 1) { // Handle single touch
-                // evt.preventDefault(); // Prevent scroll only when drawing starts
-                 isDrawing = true;
-                 handleDraw(evt); // Draw first point
+        // --- Update Event Listeners Based on Mode ---
+        function updateEventListeners() {
+             // Remove existing listeners first to avoid duplicates
+             canvas.removeEventListener('mousedown', gridMouseDown);
+             canvas.removeEventListener('mousemove', gridMouseMove);
+             canvas.removeEventListener('touchstart', gridTouchStart, { passive: false });
+             canvas.removeEventListener('touchmove', gridTouchMove, { passive: false });
+             // TODO: Remove Bezier listeners when implemented
+
+             // Add listeners based on currentEditMode
+             if (currentEditMode === 'grid') {
+                 canvas.addEventListener('mousedown', gridMouseDown);
+                 canvas.addEventListener('mousemove', gridMouseMove);
+                 canvas.addEventListener('touchstart', gridTouchStart, { passive: false });
+                 canvas.addEventListener('touchmove', gridTouchMove, { passive: false });
+             } else if (currentEditMode === 'bezier') {
+                 console.log("Attaching placeholder Bezier listeners");
+                 // TODO: Attach actual Bezier listeners here
+                 // canvas.addEventListener('mousedown', bezierMouseDown);
+                 // ... etc ...
              }
-        }, { passive: false }); // Need passive false to call preventDefault
+         }
 
-        canvas.addEventListener('touchmove', (evt)=>{
-            if (isDrawing && evt.touches.length === 1) {
-                 evt.preventDefault(); // Prevent scroll while swiping on canvas
-                 handleDraw(evt);
-             }
-        }, { passive: false });
+         // --- Grid Mode Event Handlers ---
+         function gridMouseDown(evt) { if(evt.button!==0) return; isDrawing=true; lastDrawX=null; lastDrawY=null; canvas.style.cursor='crosshair'; handleGridDraw(evt); }
+         function gridMouseMove(evt) { if(isDrawing) { handleGridDraw(evt); } }
+         function gridTouchStart(evt) { if (evt.touches.length === 1) { isDrawing = true; lastDrawX=null; lastDrawY=null; handleGridDraw(evt); } }
+         function gridTouchMove(evt) { if (isDrawing && evt.touches.length === 1) { evt.preventDefault(); handleGridDraw(evt); } }
+         // --- End Grid Mode Event Handlers ---
 
-        canvas.addEventListener('touchend', (evt)=>{ isDrawing=false; });
-        canvas.addEventListener('touchcancel', (evt)=>{ isDrawing=false; });
+        // --- General Listeners (Mouse Up, Leave, Copy, Play, Stop, Presets) ---
+        window.addEventListener('mouseup', (evt)=>{
+            // Stop grid drawing
+            if(isDrawing && evt.button === 0){ isDrawing=false; canvas.style.cursor='crosshair'; lastDrawX=null; lastDrawY=null; }
+            // Stop duty dragging
+            if(isDraggingDuty){ isDraggingDuty = false; presetSquareBtn.style.cursor = 'ew-resize'; document.body.style.cursor = 'default'; }
+            // TODO: Add mouseup logic for Bezier mode if needed
+        });
+        window.addEventListener('mouseleave', () => { if(isDraggingDuty){ isDraggingDuty = false; presetSquareBtn.style.cursor = 'ew-resize'; document.body.style.cursor = 'default'; } });
+        window.addEventListener('touchend', (evt) => {
+            // Stop grid drawing
+            isDrawing=false; lastDrawX=null; lastDrawY=null;
+            // Stop duty dragging
+            if(isDraggingDuty){ isDraggingDuty = false; presetSquareBtn.style.cursor = 'ew-resize'; document.body.style.cursor = 'default'; }
+             // TODO: Add touchend logic for Bezier mode if needed
+        });
+        window.addEventListener('touchcancel', (evt) => {
+             isDrawing=false; lastDrawX=null; lastDrawY=null;
+             if(isDraggingDuty){ isDraggingDuty = false; presetSquareBtn.style.cursor = 'ew-resize'; document.body.style.cursor = 'default'; }
+             // TODO: Add touchcancel logic for Bezier mode if needed
+        });
 
-
-        // --- General Listeners ---
-        window.addEventListener('mouseup', (evt)=>{ /* ... (Duty drag stop logic remains) ... */ if(isDraggingDuty){ isDraggingDuty = false; presetSquareBtn.style.cursor = 'ew-resize'; document.body.style.cursor = 'default'; } });
-        window.addEventListener('mouseleave', () => { /* ... (Duty drag stop logic remains) ... */ if(isDraggingDuty){ isDraggingDuty = false; presetSquareBtn.style.cursor = 'ew-resize'; document.body.style.cursor = 'default'; } });
-        window.addEventListener('touchend', (evt) => { /* ... (Duty drag stop logic remains) ... */ if(isDraggingDuty){ isDraggingDuty = false; presetSquareBtn.style.cursor = 'ew-resize'; document.body.style.cursor = 'default'; } });
-        window.addEventListener('touchcancel', (evt) => { /* ... (Duty drag stop logic remains) ... */ if(isDraggingDuty){ isDraggingDuty = false; presetSquareBtn.style.cursor = 'ew-resize'; document.body.style.cursor = 'default'; } });
-
-        copyButton.addEventListener('click', ()=>{ /* ... (same) ... */ outputWaveform.select(); navigator.clipboard.writeText(outputWaveform.value).then(()=>{ copyButton.textContent='コピー完了!'; copyButton.classList.add('copied'); setTimeout(()=>{ copyButton.textContent='コピー'; copyButton.classList.remove('copied'); }, 1500); }).catch(err=>{ console.error('テキストのコピーに失敗: ', err); alert('テキストのコピーに失敗しました。'); }); });
-        playButton.addEventListener('click', ()=>{ /* ... (same, no filtering) ... */ const generatedWav = outputWaveform.value; const userMML = testMMLTextarea.value; const playbackMML = `${generatedWav}\n@10-0\n${userMML}`; console.log("再生MML:\n", playbackMML); try{ flmml.play(playbackMML); } catch (e) { console.error("FlMML 再生エラー:", e); alert("MMLの再生中にエラーが発生しました。コンソールを確認してください。"); } });
+        copyButton.addEventListener('click', ()=>{ /* ... (same) ... */ });
+        playButton.addEventListener('click', ()=>{ const generatedWav = outputWaveform.value; const userMML = testMMLTextarea.value; const instrumentCmd = currentWavMode === 'wav13' ? '@13-0' : '@10-0'; const playbackMML = `${generatedWav}\n${instrumentCmd}\n${userMML}`; console.log("再生MML:\n", playbackMML); try{ flmml.play(playbackMML); } catch (e) { console.error("FlMML 再生エラー:", e); alert("MMLの再生中にエラーが発生しました。コンソールを確認してください。"); } });
         stopButton.addEventListener('click', ()=>{ flmml.stop(); });
         presetSineBtn.addEventListener('click', () => applyPreset('sine'));
         presetSawBtn.addEventListener('click', () => applyPreset('saw'));
@@ -307,34 +391,77 @@ C D E F G A B < C</textarea>
         presetRandomBtn.addEventListener('click', () => applyPreset('random'));
         resetWaveformBtn.addEventListener('click', () => applyPreset('reset'));
 
-        // --- Duty Cycle Drag Logic (Mouse + Touch) ---
-        function updateDutyFromEvent(event) { /* ... (same) ... */
-             const rect = presetSquareBtn.getBoundingClientRect();
-             // Check if touches exist, otherwise use clientX/Y
-             const clientX = event.touches ? event.touches[0].clientX : event.clientX;
-             //const clientY = event.touches ? event.touches[0].clientY : event.clientY; // Not needed for duty
-             const x = clientX - rect.left;
-             let duty = Math.round((x / rect.width) * 100); duty = Math.max(5, Math.min(95, duty));
-             if (duty !== currentDuty || !isSquareActive) { currentDuty = duty; waveformData = generateSquare(currentDuty); isSquareActive = true; redraw(); presetSquareBtn.title = `矩形波 (デューティ比 ${currentDuty}%)`; }
-         }
-        presetSquareBtn.addEventListener('mousedown', (e) => { /* ... (same) ... */ e.preventDefault(); if (!isSquareActive) { currentDuty = 50; presetSquareBtn.title = `矩形波 (ドラッグでデューティ比変更)`; } isDraggingDuty = true; presetSquareBtn.style.cursor = 'grabbing'; document.body.style.cursor = 'ew-resize'; updateDutyFromEvent(e); });
-        presetSquareBtn.addEventListener('touchstart', (e) => { /* ... (same) ... */ e.preventDefault(); if (!isSquareActive) { currentDuty = 50; presetSquareBtn.title = `矩形波 (ドラッグでデューティ比変更)`; } isDraggingDuty = true; updateDutyFromEvent(e); }, { passive: false });
-        // Use window listeners for move events to track outside the button
+        // --- Duty Cycle Drag Logic ---
+        function updateDutyFromEvent(event) { /* ... (same) ... */ }
+        presetSquareBtn.addEventListener('mousedown', (e) => { /* ... (same) ... */ });
+        presetSquareBtn.addEventListener('touchstart', (e) => { /* ... (same) ... */ }, { passive: false });
         window.addEventListener('mousemove', (e) => { if (isDraggingDuty) { updateDutyFromEvent(e); } });
         window.addEventListener('touchmove', (e) => { if (isDraggingDuty) { updateDutyFromEvent(e); } }, { passive: false });
 
         // --- Textarea Input Synchronization ---
-        outputWaveform.addEventListener('input', (event) => { /* ... (same as previous, including space removal) ... */
-            const text = outputWaveform.value; let currentCursorPos = -1; try { currentCursorPos = outputWaveform.selectionStart; } catch(e) {}
-            if (text.startsWith(WAV_PREFIX)) { let hexPart = text.substring(WAV_PREFIX.length); const cleanedHexPart = hexPart.replace(/\s+/g, '');
-                if (hexPart !== cleanedHexPart) { const diff = hexPart.length - cleanedHexPart.length; outputWaveform.value = WAV_PREFIX + cleanedHexPart; if (currentCursorPos !== -1) { const newCursorPos = Math.max(WAV_PREFIX.length, currentCursorPos - diff); try { outputWaveform.setSelectionRange(newCursorPos, newCursorPos); } catch (e) {} } hexPart = cleanedHexPart; }
-                 if (hexPart.length === 32 && /^[0-9a-fA-F]+$/.test(hexPart)) { outputWaveform.classList.remove('invalid'); const newData = []; let changed = false; for (let i = 0; i < 32; i++) { const newVal = parseInt(hexPart[i], 16); newData.push(newVal); if (waveformData[i] !== newVal) changed = true; } if (changed) { waveformData = newData; isSquareActive = false; drawGrid(); drawWaveform(); } } else { outputWaveform.classList.add('invalid'); }
-             } else { outputWaveform.classList.add('invalid'); }
-        });
+        outputWaveform.addEventListener('input', (event) => { /* ... (same, uses currentWavMode etc) ... */ });
+
+        // --- Mode/Length/Resolution/EditMode Change Listeners ---
+        wavModeSelect.addEventListener('change', initializeWaveform);
+        wavLengthInput.addEventListener('change', () => { if (currentWavMode === 'wav13') { initializeWaveform(); } });
+        wavResolutionSelect.addEventListener('change', () => { if (currentWavMode === 'wav13') { initializeWaveform(); } });
+
+        editModeRadios.forEach(radio => {
+             radio.addEventListener('change', (event) => {
+                 currentEditMode = event.target.value;
+                 console.log("Edit Mode Changed to:", currentEditMode);
+                 updateEventListeners();
+                 // TODO: Add logic to switch canvas appearance or clear Bezier points if switching modes
+                 if (currentEditMode === 'grid') {
+                     redraw(); // Ensure grid waveform is visible
+                 } else {
+                     // Clear canvas or draw Bezier UI placeholders
+                     // drawBezierUI(); // Placeholder
+                 }
+             });
+         });
+
+         // Function to attach/detach listeners based on mode
+         // Call this initially and on mode change
+         function updateEventListeners() {
+             // Detach all first (safer)
+             canvas.removeEventListener('mousedown', gridMouseDown);
+             canvas.removeEventListener('mousemove', gridMouseMove);
+             canvas.removeEventListener('touchstart', gridTouchStart, { passive: false });
+             canvas.removeEventListener('touchmove', gridTouchMove, { passive: false });
+             // TODO: Detach Bezier listeners
+
+             if (currentEditMode === 'grid') {
+                 canvas.addEventListener('mousedown', gridMouseDown);
+                 canvas.addEventListener('mousemove', gridMouseMove);
+                 canvas.addEventListener('touchstart', gridTouchStart, { passive: false });
+                 canvas.addEventListener('touchmove', gridTouchMove, { passive: false });
+             } else if (currentEditMode === 'bezier') {
+                 console.log("Attaching placeholder Bezier listeners - Not Implemented");
+                 // Example: canvas.addEventListener('mousedown', handleBezierMouseDown);
+             }
+         }
+
 
         // --- Initial Setup & Draw ---
-        let isInitialized = false; const initObserver = new ResizeObserver(()=>{ if(!isInitialized && canvas.clientWidth > 0){ setupCanvas(); redraw(); isInitialized = true; } else if(isInitialized && canvas.clientWidth > 0){ redraw(); } });
-        initObserver.observe(canvas); window.addEventListener('load', ()=>{ if(!isInitialized){ console.warn("Fallback: Initializing on window.load"); setupCanvas(); redraw(); isInitialized = true; } });
+        let isInitialized = false;
+        const initObserver = new ResizeObserver(()=>{
+             if (!isInitialized && canvas.clientWidth > 0){
+                 initializeWaveform(); // This now calls setupCanvas, redraw, and updateEventListeners
+                 isInitialized = true;
+             } else if (isInitialized && canvas.clientWidth > 0){
+                 setupCanvas(); // Recalculate geometry on resize
+                 redraw(); // Redraw with new geometry
+             }
+        });
+        initObserver.observe(canvas);
+        window.addEventListener('load', ()=>{
+             if (!isInitialized){
+                 console.warn("Fallback: Initializing on window.load");
+                 initializeWaveform();
+                 isInitialized = true;
+             }
+        });
 
     </script>
 
