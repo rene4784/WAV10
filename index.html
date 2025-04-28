@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FlMML 波形メモリメーカー (@10/@13)</title> <script src="https://unpkg.com/flmml-on-html5@2.0.3/dist/flmml-on-html5.js"></script>
+    <title>FlMML 波形メモリメーカー (@10/@13)</title>
+    <script src="https://unpkg.com/flmml-on-html5@2.0.3/dist/flmml-on-html5.js"></script>
     <style>
         /* :root と基本的なスタイル */
         :root {
@@ -23,7 +25,8 @@
             --success-color: #5cb85c;
             --preset-button-bg: #5a5a5a;
             --preset-button-hover-bg: #6a6a6a;
-            --icon-button-size: 2.5rem; /* Slightly smaller */
+            --icon-button-size: 2.5rem;
+            /* Slightly smaller */
             --grid-line-color: #555555;
             --grid-center-line-color: #888888;
             --waveform-fill-color: rgba(74, 144, 226, 0.75);
@@ -34,165 +37,494 @@
             --control-gap-vert: 0.8rem;
             --control-gap-horz: 1.2rem;
         }
-        html { font-size: var(--base-font-size); height: 100%; }
-        body { font-family: var(--font-family); background-color: var(--bg-color); color: var(--text-color); display: flex; flex-direction: column; margin: 0; padding: 1.5rem; height: 100%; box-sizing: border-box; overflow-x: hidden; }
-        h1 { margin: 0 0 1.5rem 0; color: var(--text-color); font-size: 1.8rem; font-weight: 600; text-align: center; width: 100%; }
-        .app-container { display: flex; flex-direction: row; gap: 1.5rem; width: 100%; flex-grow: 1; overflow: hidden; }
-        .left-panel { flex: 2; display: flex; flex-direction: column; min-width: 300px; gap: 1rem; }
-        .right-panel { flex: 1; display: flex; flex-direction: column; gap: 1.5rem; min-width: 280px; }
-        .card { background-color: var(--panel-bg); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 1.5rem; display: flex; flex-direction: column; gap: var(--control-gap-vert); overflow: hidden; }
-        .left-panel .canvas-card {
-             flex-grow: 1; padding: 1rem; gap: 1rem; /* Consistent gap */
-             max-width: 1024px; /* Added max-width */
-             margin-left: auto; /* Center align */
-             margin-right: auto; /* Center align */
-             width: 100%; /* Ensure it takes available width up to max */
+
+        html {
+            font-size: var(--base-font-size);
+            height: 100%;
         }
-        label, .label-group label { /* Apply to group labels as well */
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            margin: 0;
+            padding: 1.5rem;
+            height: 100%;
+            box-sizing: border-box;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            margin: 0 0 1.5rem 0;
+            color: var(--text-color);
+            font-size: 1.8rem;
+            font-weight: 600;
+            text-align: center;
+            width: 100%;
+        }
+
+        .app-container {
+            display: flex;
+            flex-direction: row;
+            gap: 1.5rem;
+            width: 100%;
+            flex-grow: 1;
+            overflow: hidden;
+        }
+
+        .left-panel {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            min-width: 300px;
+            gap: 1rem;
+        }
+
+        .right-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            min-width: 280px;
+        }
+
+        .card {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: var(--control-gap-vert);
+            overflow: hidden;
+        }
+
+        .left-panel .canvas-card {
+            flex-grow: 1;
+            padding: 1rem;
+            gap: 1rem;
+            /* Consistent gap */
+            max-width: 1024px;
+            /* Added max-width */
+            margin-left: auto;
+            /* Center align */
+            margin-right: auto;
+            /* Center align */
+            width: 100%;
+            /* Ensure it takes available width up to max */
+        }
+
+        label,
+        .label-group label {
+            /* Apply to group labels as well */
             font-weight: 600;
             margin-bottom: 0.3rem;
             display: block;
-            font-size: 0.95rem; /* Slightly smaller label */
+            font-size: 0.95rem;
+            /* Slightly smaller label */
             color: var(--muted-text-color);
         }
+
         .label-inline {
-            display: inline-block; margin-right: 0.5rem; margin-bottom: 0; vertical-align: middle;
+            display: inline-block;
+            margin-right: 0.5rem;
+            margin-bottom: 0;
+            vertical-align: middle;
         }
-        select, input[type="number"], input[type="radio"] + label { vertical-align: middle; }
-        select, input[type="number"] { background-color: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: calc(var(--border-radius) * 0.8); padding: 0.4rem 0.6rem; font-size: 0.9rem; }
-        input[type="number"] { width: 5em; }
-        select { min-width: 8em; }
-        input[type="radio"] { margin-right: 0.2em; vertical-align: middle; }
-        .radio-option { margin-right: var(--control-gap-horz); display: inline-block; /* Keep radios together */ }
-        .radio-option:last-child { margin-right: 0; }
+
+        select,
+        input[type="number"],
+        input[type="radio"]+label {
+            vertical-align: middle;
+        }
+
+        select,
+        input[type="number"] {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            border-radius: calc(var(--border-radius) * 0.8);
+            padding: 0.4rem 0.6rem;
+            font-size: 0.9rem;
+        }
+
+        input[type="number"] {
+            width: 5em;
+        }
+
+        select {
+            min-width: 8em;
+        }
+
+        input[type="radio"] {
+            margin-right: 0.2em;
+            vertical-align: middle;
+        }
+
+        .radio-option {
+            margin-right: var(--control-gap-horz);
+            display: inline-block;
+            /* Keep radios together */
+        }
+
+        .radio-option:last-child {
+            margin-right: 0;
+        }
 
         #waveformCanvas {
-             border: 1px solid var(--border-color); cursor: crosshair; background-color: var(--canvas-bg-color); display: block; width: 100%; height: auto; aspect-ratio: 320 / 170; border-radius: calc(var(--border-radius) * 0.8); align-self: center; flex-shrink: 0; touch-action: none;
-             margin-bottom: 0.5rem; /* Add margin below canvas */
+            border: 1px solid var(--border-color);
+            cursor: crosshair;
+            background-color: var(--canvas-bg-color);
+            display: block;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 320 / 170;
+            border-radius: calc(var(--border-radius) * 0.8);
+            align-self: center;
+            flex-shrink: 0;
+            touch-action: none;
+            margin-bottom: 0.5rem;
+            /* Add margin below canvas */
         }
-        #waveformCanvas.bezier-mode { cursor: default; }
 
-        .info { font-size: 0.85rem; color: var(--muted-text-color); line-height: 1.4; }
-        textarea { width: 100%; font-family: var(--monospace-font-family); padding: 0.8rem; border: 1px solid var(--border-color); border-radius: calc(var(--border-radius) * 0.8); background-color: var(--card-bg); color: var(--text-color); resize: vertical; box-sizing: border-box; font-size: 0.9rem; flex-grow: 1; min-height: 8em; }
-        #outputWaveform { min-height: 6em; flex-grow: 0; transition: border-color 0.2s ease-in-out; }
-        #outputWaveform.invalid { border-color: var(--error-border-color); }
-        #testMML { flex-grow: 1; }
-        button { padding: 0.6rem 1.1rem; cursor: pointer; border: none; border-radius: var(--border-radius); font-size: 0.95rem; font-weight: 600; transition: background-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out; background-color: var(--primary-color); color: white; }
-        button:hover { background-color: var(--primary-hover-color); box-shadow: 0 0 5px rgba(74, 144, 226, 0.5); }
-        button:active { background-color: #3a7bc8; }
-        #copyButton, #stopButton { background-color: var(--secondary-color); }
-        #copyButton:hover, #stopButton:hover { background-color: var(--secondary-hover-color); box-shadow: none; }
-        #copyButton.copied { background-color: var(--success-color); color: #ffffff; }
-        .button-group { display: flex; gap: 0.8rem; margin-top: 0.5rem; flex-wrap: wrap; }
+        #waveformCanvas.bezier-mode {
+            cursor: default;
+        }
+
+        .info {
+            font-size: 0.85rem;
+            color: var(--muted-text-color);
+            line-height: 1.4;
+        }
+
+        textarea {
+            width: 100%;
+            font-family: var(--monospace-font-family);
+            padding: 0.8rem;
+            border: 1px solid var(--border-color);
+            border-radius: calc(var(--border-radius) * 0.8);
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            resize: vertical;
+            box-sizing: border-box;
+            font-size: 0.9rem;
+            flex-grow: 1;
+            min-height: 8em;
+        }
+
+        #outputWaveform {
+            min-height: 6em;
+            flex-grow: 0;
+            transition: border-color 0.2s ease-in-out;
+        }
+
+        #outputWaveform.invalid {
+            border-color: var(--error-border-color);
+        }
+
+        #testMML {
+            flex-grow: 1;
+        }
+
+        button {
+            padding: 0.6rem 1.1rem;
+            cursor: pointer;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: background-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover-color);
+            box-shadow: 0 0 5px rgba(74, 144, 226, 0.5);
+        }
+
+        button:active {
+            background-color: #3a7bc8;
+        }
+
+        #copyButton,
+        #stopButton {
+            background-color: var(--secondary-color);
+        }
+
+        #copyButton:hover,
+        #stopButton:hover {
+            background-color: var(--secondary-hover-color);
+            box-shadow: none;
+        }
+
+        #copyButton.copied {
+            background-color: var(--success-color);
+            color: #ffffff;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 0.8rem;
+            margin-top: 0.5rem;
+            flex-wrap: wrap;
+        }
 
         /* === Control Layout Improvements === */
         .settings-area {
             display: flex;
-            flex-wrap: wrap; /* Allow wrapping */
-            gap: var(--control-gap-vert) var(--control-gap-horz); /* Vertical and Horizontal gaps */
-            align-items: center; /* Align items vertically */
+            flex-wrap: wrap;
+            /* Allow wrapping */
+            gap: var(--control-gap-vert) var(--control-gap-horz);
+            /* Vertical and Horizontal gaps */
+            align-items: center;
+            /* Align items vertically */
             border-bottom: 1px solid var(--border-color);
             padding-bottom: 1rem;
-            margin-bottom: 0; /* Remove margin below settings */
+            margin-bottom: 0;
+            /* Remove margin below settings */
         }
-        .control-group { /* Wrapper for related controls like Data Mode + Length/Res */
+
+        .control-group {
+            /* Wrapper for related controls like Data Mode + Length/Res */
             display: flex;
-            flex-wrap: nowrap; /* Keep Data mode and its options together */
+            flex-wrap: nowrap;
+            /* Keep Data mode and its options together */
             gap: var(--control-gap-horz);
             align-items: center;
         }
-        .label-group { /* Wrapper for a label and its control(s) */
+
+        .label-group {
+            /* Wrapper for a label and its control(s) */
             display: flex;
-            flex-direction: column; /* Label above control */
+            flex-direction: column;
+            /* Label above control */
             gap: 0.2rem;
         }
-        .label-group > div { /* Ensure inner divs align controls properly */
-           display: flex;
-           align-items: center;
-           gap: 0.5rem;
+
+        .label-group>div {
+            /* Ensure inner divs align controls properly */
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
-        .label-group.inline-label > label { /* For inline labels like Edit Mode */
-           display: inline-block;
-           margin-bottom: 0;
-           margin-right: 0.5rem;
+
+        .label-group.inline-label>label {
+            /* For inline labels like Edit Mode */
+            display: inline-block;
+            margin-bottom: 0;
+            margin-right: 0.5rem;
         }
-        .label-group.inline-label > div {
-             display: inline-block; /* Allow radio buttons next to label */
+
+        .label-group.inline-label>div {
+            display: inline-block;
+            /* Allow radio buttons next to label */
         }
-        #lengthControl, #resolutionControl {
-             display: none; /* Keep JS control */
-             /* Add alignment within .control-group */
-             align-items: center;
+
+        #lengthControl,
+        #resolutionControl {
+            display: none;
+            /* Keep JS control */
+            /* Add alignment within .control-group */
+            align-items: center;
         }
+
         /* Explicitly show flex when needed by JS */
-        #lengthControl.visible, #resolutionControl.visible {
-             display: flex;
+        #lengthControl.visible,
+        #resolutionControl.visible {
+            display: flex;
         }
 
         /* === Waveform Controls Layout === */
         .waveform-controls {
             display: flex;
-            flex-direction: column; /* Stack Presets label and buttons */
-            gap: 0.6rem; /* Space between label and buttons */
-            margin-top: 0.5rem; /* Add space above presets */
+            flex-direction: column;
+            /* Stack Presets label and buttons */
+            gap: 0.6rem;
+            /* Space between label and buttons */
+            margin-top: 0.5rem;
+            /* Add space above presets */
         }
+
         .preset-icons {
-             display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center;
+            display: flex;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+            align-items: center;
         }
-        .preset-icons .label-inline { margin-right: 0.5rem; } /* Space after "サンプル:" */
+
+        .preset-icons .label-inline {
+            margin-right: 0.5rem;
+        }
+
+        /* Space after "サンプル:" */
         .preset-icons button {
             background-color: var(--preset-button-bg);
-            font-size: 1.1rem; /* Slightly smaller icon font */
-            font-weight: bold; line-height: 1; padding: 0;
-            width: var(--icon-button-size); height: var(--icon-button-size); min-width: var(--icon-button-size);
-            display: flex; justify-content: center; align-items: center;
-            border: 1px solid var(--border-color); color: var(--text-color);
+            font-size: 1.1rem;
+            /* Slightly smaller icon font */
+            font-weight: bold;
+            line-height: 1;
+            padding: 0;
+            width: var(--icon-button-size);
+            height: var(--icon-button-size);
+            min-width: var(--icon-button-size);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
             transition: background-color 0.1s ease-in-out;
         }
-        .preset-icons button:hover { background-color: var(--preset-button-hover-bg); box-shadow: none; }
-        .preset-icons button#presetSquare { cursor: ew-resize; }
-        #resetWaveform {
-             background-color: var(--secondary-color); font-size: 0.9rem;
-             width: auto; white-space: nowrap; padding: 0.5rem 0.9rem;
-             margin-left: auto; /* Pushes Reset to the right */
+
+        .preset-icons button:hover {
+            background-color: var(--preset-button-hover-bg);
+            box-shadow: none;
         }
-        #resetWaveform:hover { background-color: var(--secondary-hover-color); box-shadow: none; }
+
+        .preset-icons button#presetSquare {
+            cursor: ew-resize;
+        }
+
+        #resetWaveform {
+            background-color: var(--secondary-color);
+            font-size: 0.9rem;
+            width: auto;
+            white-space: nowrap;
+            padding: 0.5rem 0.9rem;
+            margin-left: auto;
+            /* Pushes Reset to the right */
+        }
+
+        #resetWaveform:hover {
+            background-color: var(--secondary-hover-color);
+            box-shadow: none;
+        }
 
 
         /* Responsive Layout */
-        @media (max-width: 1024px) { /* Apply left/right panel stacking below max-width */
-            .app-container { flex-direction: column; overflow: visible; }
-            .left-panel, .right-panel { flex: none; width: 100%; min-width: unset; }
-            .left-panel .canvas-card { margin-left: 0; margin-right: 0; /* Remove centering when stacked */ }
+        @media (max-width: 1024px) {
+
+            /* Apply left/right panel stacking below max-width */
+            .app-container {
+                flex-direction: column;
+                overflow: visible;
+            }
+
+            .left-panel,
+            .right-panel {
+                flex: none;
+                width: 100%;
+                min-width: unset;
+            }
+
+            .left-panel .canvas-card {
+                margin-left: 0;
+                margin-right: 0;
+                /* Remove centering when stacked */
+            }
         }
+
         @media (max-width: 900px) {
-             body { padding: 1rem; height: auto; }
-             /* Already handled by 1024px */
-             /* .app-container { flex-direction: column; overflow: visible; } */
-             /* .left-panel, .right-panel { flex: none; width: 100%; min-width: unset; } */
-             .left-panel .canvas-card { height: auto; }
-             h1 { font-size: 1.6rem; }
-             .settings-area { justify-content: flex-start; } /* Align settings left */
-              #resetWaveform { margin-left: 0; margin-top: 0.5rem; } /* Reset moves below */
-             .preset-icons { justify-content: flex-start; }
+            body {
+                padding: 1rem;
+                height: auto;
+            }
+
+            /* Already handled by 1024px */
+            /* .app-container { flex-direction: column; overflow: visible; } */
+            /* .left-panel, .right-panel { flex: none; width: 100%; min-width: unset; } */
+            .left-panel .canvas-card {
+                height: auto;
+            }
+
+            h1 {
+                font-size: 1.6rem;
+            }
+
+            .settings-area {
+                justify-content: flex-start;
+            }
+
+            /* Align settings left */
+            #resetWaveform {
+                margin-left: 0;
+                margin-top: 0.5rem;
+            }
+
+            /* Reset moves below */
+            .preset-icons {
+                justify-content: flex-start;
+            }
         }
+
         @media (max-width: 600px) {
-            .left-panel .canvas-card { padding-left: 0.5rem; padding-right: 0.5rem; }
-            .card { padding: 1rem; } h1 { font-size: 1.4rem; }
-            button { padding: 0.5rem 0.9rem; font-size: 0.9rem; }
-            .settings-area { gap: var(--control-gap-vert) 0.8rem; } /* Reduce horizontal gap */
-            .control-group { flex-direction: column; align-items: flex-start; gap: var(--control-gap-vert); } /* Stack groups vertically */
-            .preset-icons button { width: calc(var(--icon-button-size) * 0.9); height: calc(var(--icon-button-size) * 0.9); min-width: calc(var(--icon-button-size) * 0.9); font-size: 1rem; }
-            #resetWaveform { padding: 0.4rem 0.8rem; font-size: 0.85rem; }
-            select, input[type="number"] { font-size: 0.85rem; padding: 0.3rem 0.5rem; }
+            .left-panel .canvas-card {
+                padding-left: 0.5rem;
+                padding-right: 0.5rem;
+            }
+
+            .card {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 1.4rem;
+            }
+
+            button {
+                padding: 0.5rem 0.9rem;
+                font-size: 0.9rem;
+            }
+
+            .settings-area {
+                gap: var(--control-gap-vert) 0.8rem;
+            }
+
+            /* Reduce horizontal gap */
+            .control-group {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: var(--control-gap-vert);
+            }
+
+            /* Stack groups vertically */
+            .preset-icons button {
+                width: calc(var(--icon-button-size) * 0.9);
+                height: calc(var(--icon-button-size) * 0.9);
+                min-width: calc(var(--icon-button-size) * 0.9);
+                font-size: 1rem;
+            }
+
+            #resetWaveform {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.85rem;
+            }
+
+            select,
+            input[type="number"] {
+                font-size: 0.85rem;
+                padding: 0.3rem 0.5rem;
+            }
         }
-         /* Specific tweak for very narrow screens if needed */
-         @media (max-width: 400px) {
-              .settings-area { flex-direction: column; align-items: flex-start; }
-              .control-group { width: 100%; } /* Ensure groups take full width */
-         }
+
+        /* Specific tweak for very narrow screens if needed */
+        @media (max-width: 400px) {
+            .settings-area {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .control-group {
+                width: 100%;
+            }
+
+            /* Ensure groups take full width */
+        }
     </style>
 </head>
+
 <body>
 
     <h1>FlMML 波形メモリメーカー (@10/@13)</h1>
@@ -200,44 +532,44 @@
     <div class="app-container">
         <div class="left-panel">
             <div class="card canvas-card">
-                 <div class="settings-area">
-                      <div class="control-group">
-                          <div class="label-group">
-                              <label for="wavMode">データモード:</label>
-                              <select id="wavMode">
-                                  <option value="wav10" selected>WAV10 (4bit, 32step)</option>
-                                  <option value="wav13">WAV13 (8bit, 可変長)</option>
-                              </select>
-                          </div>
-                          <div id="lengthControl" class="label-group">
-                              <label for="wavLength">サンプル長:</label>
-                              <input type="number" id="wavLength" min="1" max="1024" value="32">
-                          </div>
-                          <div id="resolutionControl" class="label-group">
-                              <label for="wavResolution">解像度:</label>
-                              <select id="wavResolution">
-                                  <option value="256" selected>256 (8bit)</option>
-                                  <option value="128">128 (7bit)</option>
-                                  <option value="64">64 (6bit)</option>
-                                  <option value="32">32 (5bit)</option>
-                                  <option value="16">16 (4bit)</option>
-                              </select>
-                          </div>
-                      </div>
-                      <div class="label-group inline-label">
-                           <label>編集モード:</label>
-                           <div>
-                               <span class="radio-option">
-                                    <input type="radio" id="editModeGrid" name="editMode" value="grid" checked>
-                                    <label for="editModeGrid">グリッド</label>
-                               </span>
-                               <span class="radio-option">
-                                    <input type="radio" id="editModeBezier" name="editMode" value="bezier">
-                                    <label for="editModeBezier">ベジェ</label>
-                               </span>
-                           </div>
-                       </div>
-                  </div>
+                <div class="settings-area">
+                    <div class="control-group">
+                        <div class="label-group">
+                            <label for="wavMode">データモード:</label>
+                            <select id="wavMode">
+                                <option value="wav10" selected>WAV10 (4bit, 32step)</option>
+                                <option value="wav13">WAV13 (8bit, 可変長)</option>
+                            </select>
+                        </div>
+                        <div id="lengthControl" class="label-group">
+                            <label for="wavLength">サンプル長:</label>
+                            <input type="number" id="wavLength" min="1" max="1024" value="32">
+                        </div>
+                        <div id="resolutionControl" class="label-group">
+                            <label for="wavResolution">解像度:</label>
+                            <select id="wavResolution">
+                                <option value="256" selected>256 (8bit)</option>
+                                <option value="128">128 (7bit)</option>
+                                <option value="64">64 (6bit)</option>
+                                <option value="32">32 (5bit)</option>
+                                <option value="16">16 (4bit)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="label-group inline-label">
+                        <label>編集モード:</label>
+                        <div>
+                            <span class="radio-option">
+                                <input type="radio" id="editModeGrid" name="editMode" value="grid" checked>
+                                <label for="editModeGrid">グリッド</label>
+                            </span>
+                            <span class="radio-option">
+                                <input type="radio" id="editModeBezier" name="editMode" value="bezier">
+                                <label for="editModeBezier">ベジェ</label>
+                            </span>
+                        </div>
+                    </div>
+                </div>
 
                 <label for="waveformCanvas" style="margin-top: 0.5rem;">波形エディタ</label>
                 <canvas id="waveformCanvas"></canvas>
@@ -247,16 +579,16 @@
                 </div>
 
                 <div class="waveform-controls">
-                     <label class="label-inline">サンプル波形:</label>
-                     <div class="preset-icons">
-                         <button id="presetSine" title="サイン波">〜</button>
-                         <button id="presetSaw" title="ノコギリ波">／</button>
-                         <button id="presetSquare" title="矩形波 (クリック:50%, ドラッグ:デューティ比変更)">П</button>
-                         <button id="presetTriangle" title="三角波">Λ</button>
-                         <button id="presetRandom" title="ランダム">?</button>
-                         <button id="resetWaveform">リセット</button>
-                     </div>
-                 </div>
+                    <label class="label-inline">サンプル波形:</label>
+                    <div class="preset-icons">
+                        <button id="presetSine" title="サイン波">〜</button>
+                        <button id="presetSaw" title="ノコギリ波">／</button>
+                        <button id="presetSquare" title="矩形波 (クリック:50%, ドラッグ:デューティ比変更)">П</button>
+                        <button id="presetTriangle" title="三角波">Λ</button>
+                        <button id="presetRandom" title="ランダム">?</button>
+                        <button id="resetWaveform">リセット</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -265,21 +597,21 @@
                 <label for="outputWaveform">生成/編集 <span id="outputModeLabel">#WAV10</span> 文字列</label>
                 <textarea id="outputWaveform" rows="3"></textarea>
                 <button id="copyButton">コピー</button>
-                 <div class="info">
+                <div class="info">
                     エディタ操作で自動生成されますが、直接編集も可能です。<br>
                     編集内容はエディタ表示に反映されます。(空白は自動除去)
                 </div>
             </div>
-             <div class="card" style="flex-grow: 1;">
-                 <label for="testMML">テストMML</label>
-                 <textarea id="testMML">T120 L8 O5
+            <div class="card" style="flex-grow: 1;">
+                <label for="testMML">テストMML</label>
+                <textarea id="testMML">T120 L8 O5
 C D E F G A B < C</textarea>
-                 <div class="button-group">
-                     <button id="playButton">再生</button>
-                     <button id="stopButton">停止</button>
-                 </div>
-                 <div class="info">
-                     再生時、上記の生成/編集された波形定義と <span id="playbackInstrumentLabel">@10-0</span> がこのMMLの先頭に追加されます。
+                <div class="button-group">
+                    <button id="playButton">再生</button>
+                    <button id="stopButton">停止</button>
+                </div>
+                <div class="info">
+                    再生時、上記の生成/編集された波形定義と <span id="playbackInstrumentLabel">@10-0</span> がこのMMLの先頭に追加されます。
                 </div>
             </div>
         </div>
@@ -318,7 +650,7 @@ C D E F G A B < C</textarea>
         let currentMaxValue = 15; let currentCenterValue = 8; let currentQuantizeLevels = 16;
         let waveformData = [];
         let baseWidth = 320; let baseHeight = 170; let dpr = 1;
-        let cellWidth, centerY; // stepHeight is calculated locally in drawWaveform now
+        let cellWidth, stepHeight, centerY;
         let isDrawing = false; // For grid drawing
         let currentDuty = 50; let isDraggingDuty = false; let isSquareActive = false;
         let lastDrawX = null; let lastDrawY = null; // For grid interpolation
@@ -329,39 +661,25 @@ C D E F G A B < C</textarea>
 
         // --- Quantization Function ---
         function quantizeValue(rawValue) {
-             // Ensure rawValue is a number
-             rawValue = Number(rawValue);
-             if (isNaN(rawValue)) {
-                 console.warn("quantizeValue received NaN, returning center value.");
-                 return currentCenterValue;
-             }
+            // Ensure rawValue is a number
+            rawValue = Number(rawValue);
+            if (isNaN(rawValue)) {
+                console.warn("quantizeValue received NaN, returning center value.");
+                return currentCenterValue;
+            }
 
-             // --- Grid Drawing Input Mapping (Use visual steps) ---
-             // Map rawValue (0-currentMaxValue) to the closest visual grid step index [0, numSteps-1]
-             const hLineRes = (currentWavMode === 'wav13' && currentQuantizeLevels < 256) ? currentQuantizeLevels : currentResolution;
-             const numSteps = hLineRes > 0 ? hLineRes : 1;
-             let stepIndex;
-             if (currentMaxValue === (numSteps - 1)) {
-                 // Direct mapping (like WAV10)
-                 stepIndex = Math.round(rawValue);
-             } else {
-                 // Scale value to step index
-                 stepIndex = Math.round((rawValue / currentMaxValue) * (numSteps - 1));
-             }
-             stepIndex = Math.max(0, Math.min(numSteps - 1, stepIndex)); // Clamp index
-
-             // Convert stepIndex back to the value range [0, currentMaxValue] for storing
-             let finalValue;
-             if (currentMaxValue === (numSteps - 1)) {
-                 finalValue = stepIndex; // Direct mapping
-             } else {
-                 // Scale step index back to value
-                 finalValue = Math.round((stepIndex / (numSteps - 1)) * currentMaxValue);
-             }
-
-             // Final clamp to ensure it's within the absolute bounds
-             return Math.max(0, Math.min(currentMaxValue, finalValue));
-         }
+            if (currentWavMode === 'wav10' || currentQuantizeLevels >= 256) {
+                // Simple rounding for WAV10 or full 8-bit resolution
+                return Math.max(0, Math.min(currentMaxValue, Math.round(rawValue)));
+            }
+            // For WAV13 with lower quantization
+            const steps = currentQuantizeLevels - 1;
+            if (steps <= 0) return currentCenterValue; // Avoid division by zero
+            const stepSize = currentMaxValue / steps;
+            const quantized = Math.round(rawValue / stepSize) * stepSize;
+            // Final round might be needed if stepSize results in non-integers, though unlikely for powers of 2
+            return Math.max(0, Math.min(currentMaxValue, Math.round(quantized)));
+        }
 
         // --- Initialization and Mode Change ---
         function initializeWaveform() {
@@ -374,38 +692,32 @@ C D E F G A B < C</textarea>
             if (isWav13) {
                 currentLength = parseInt(wavLengthInput.value) || 64;
                 currentLength = Math.max(1, Math.min(1024, currentLength)); wavLengthInput.value = currentLength;
-                currentResolution = 256; // Base resolution for calculation remains 256
-                currentMaxValue = 255;
-                currentCenterValue = 128;
-                currentQuantizeLevels = parseInt(wavResolutionSelect.value) || 256; // This affects visual grid and quantization step count
+                currentResolution = 256; currentMaxValue = 255; currentCenterValue = 128;
+                currentQuantizeLevels = parseInt(wavResolutionSelect.value) || 256;
                 lengthControlDiv.classList.add('visible'); // Use class for visibility
                 resolutionControlDiv.classList.add('visible');
-            } else { // WAV10
-                currentLength = 32;
-                currentResolution = 16; // Resolution matches value range
-                currentMaxValue = 15;
-                currentCenterValue = 8;
-                currentQuantizeLevels = 16; // Quantization matches resolution
+            } else {
+                currentLength = 32; currentResolution = 16; currentMaxValue = 15; currentCenterValue = 8; currentQuantizeLevels = 16;
                 wavLengthInput.value = 32; // Reset hidden input too
                 wavResolutionSelect.value = "256"; // Reset hidden select
                 lengthControlDiv.classList.remove('visible');
                 resolutionControlDiv.classList.remove('visible');
             }
 
-             // Decide initial waveform based on edit mode *after* setting lengths etc.
-             if (currentEditMode === 'bezier' && typeof initializeBezier === 'function') {
-                 setupCanvas(); // Bezier needs canvas dimensions before initializing
-                 initializeBezier(); // Initialize Bezier points based on current canvas size
-                 if (typeof generateWaveformFromBezier === 'function') {
-                     generateWaveformFromBezier(); // Generate initial waveform from Bezier
-                 } else {
-                      waveformData = new Array(currentLength).fill(currentCenterValue); // Fallback if generation fails
-                 }
-             } else {
-                 // Default grid initialization or keep existing data if switching modes? Resetting is safer.
-                 waveformData = new Array(currentLength).fill(currentCenterValue);
-                 setupCanvas();
-             }
+            // Decide initial waveform based on edit mode *after* setting lengths etc.
+            if (currentEditMode === 'bezier' && typeof initializeBezier === 'function') {
+                setupCanvas(); // Bezier needs canvas dimensions before initializing
+                initializeBezier(); // Initialize Bezier points based on current canvas size
+                if (typeof generateWaveformFromBezier === 'function') {
+                    generateWaveformFromBezier(); // Generate initial waveform from Bezier
+                } else {
+                    waveformData = new Array(currentLength).fill(currentCenterValue); // Fallback if generation fails
+                }
+            } else {
+                // Default grid initialization or keep existing data if switching modes? Resetting is safer.
+                waveformData = new Array(currentLength).fill(currentCenterValue);
+                setupCanvas();
+            }
 
             isSquareActive = false; currentDuty = 50;
             updateEventListeners(); // Ensure listeners match the initial mode
@@ -420,172 +732,134 @@ C D E F G A B < C</textarea>
             canvas.width = Math.round(baseWidth * dpr); canvas.height = Math.round(baseHeight * dpr);
             ctx.resetTransform(); ctx.scale(dpr, dpr);
             cellWidth = baseWidth / currentLength;
+            // stepHeight uses target resolution for mapping, not necessarily quantization levels visually
+            stepHeight = baseHeight / currentResolution; // Keep this definition
             centerY = baseHeight / 2;
-            // stepHeight is now calculated locally in drawWaveform and quantizeValue
         }
 
 
         // --- Drawing Functions ---
         function drawGrid() {
-             ctx.lineWidth = 1 / dpr; const gridLineColor = getComputedStyle(document.documentElement).getPropertyValue('--grid-line-color').trim(); const centerLineColor = getComputedStyle(document.documentElement).getPropertyValue('--grid-center-line-color').trim(); const vLineStep = currentLength <= 64 ? 1 : (currentLength <= 128 ? 2 : (currentLength <= 256 ? 4 : 8)); ctx.strokeStyle = gridLineColor; for (let i = 0; i <= currentLength; i += vLineStep) { const x = Math.round(i * cellWidth); ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, baseHeight); ctx.stroke(); } if (currentLength % vLineStep !== 0) { const x = Math.round(currentLength * cellWidth); ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, baseHeight); ctx.stroke(); }
-
-             // Draw horizontal lines based on effective quantization level for visual feedback
-             const hLineRes = (currentWavMode === 'wav13' && currentQuantizeLevels < 256) ? currentQuantizeLevels : currentResolution;
-             const hSteps = hLineRes > 0 ? hLineRes : 1; // Avoid division by zero
-             const hStepHeight = baseHeight / hSteps; // Height per VISIBLE step
-             for (let i = 0; i <= hSteps; i ++) { const y = Math.round(i * hStepHeight); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(baseWidth, y); ctx.stroke(); }
-
-             // Draw center line
-             ctx.strokeStyle = centerLineColor; ctx.lineWidth = Math.max(1, 2 / dpr); ctx.beginPath(); const centerLineY = Math.round(centerY); ctx.moveTo(0, centerLineY); ctx.lineTo(baseWidth, centerLineY); ctx.stroke(); ctx.lineWidth = 1 / dpr; // Reset line width
+            ctx.lineWidth = 1 / dpr; const gridLineColor = getComputedStyle(document.documentElement).getPropertyValue('--grid-line-color').trim(); const centerLineColor = getComputedStyle(document.documentElement).getPropertyValue('--grid-center-line-color').trim(); const vLineStep = currentLength <= 64 ? 1 : (currentLength <= 128 ? 2 : (currentLength <= 256 ? 4 : 8)); ctx.strokeStyle = gridLineColor; for (let i = 0; i <= currentLength; i += vLineStep) { const x = Math.round(i * cellWidth); ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, baseHeight); ctx.stroke(); } if (currentLength % vLineStep !== 0) { const x = Math.round(currentLength * cellWidth); ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, baseHeight); ctx.stroke(); }
+            // Draw horizontal lines based on effective quantization level for visual feedback
+            const hLineRes = (currentWavMode === 'wav13' && currentQuantizeLevels < 256) ? currentQuantizeLevels : currentResolution;
+            const hSteps = hLineRes > 0 ? hLineRes : 1; // Avoid division by zero
+            const hStepHeight = baseHeight / hSteps; // Height per VISIBLE step
+            for (let i = 0; i <= hSteps; i++) { const y = Math.round(i * hStepHeight); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(baseWidth, y); ctx.stroke(); }
+            ctx.strokeStyle = centerLineColor; ctx.lineWidth = Math.max(1, 2 / dpr); ctx.beginPath(); const centerLineY = Math.round(centerY); ctx.moveTo(0, centerLineY); ctx.lineTo(baseWidth, centerLineY); ctx.stroke(); ctx.lineWidth = 1 / dpr;
         }
 
-
-        // === REVISED drawWaveform Function (Grid Alignment) ===
+        // === REVISED drawWaveform Function (Handles Center Value Fill) ===
         function drawWaveform() {
-             ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--waveform-fill-color').trim();
-             const minRectWidth = 1 / dpr; // Minimum width
-             const minRectHeight = 1 / dpr; // Minimum height
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--waveform-fill-color').trim();
+            const minRectWidth = 1 / dpr; // 最小の矩形幅 (見えない線を避けるため)
+            const minRectHeight = 1 / dpr; // 最小の矩形高 (視認性のため)
+            // 解像度に基づいた正確なステップ高さを計算
+            const preciseStepHeight = baseHeight / currentResolution;
+            // 中央値に対応するレベルインデックス (例: WAV10では8)
+            const centerLevelIndex = currentCenterValue;
 
-             // Calculate stepHeight based on the effective resolution for drawing grid lines
-             const hLineRes = (currentWavMode === 'wav13' && currentQuantizeLevels < 256) ? currentQuantizeLevels : currentResolution;
-             const numSteps = hLineRes > 0 ? hLineRes : 1;
-             const stepHeight = baseHeight / numSteps; // Height of one visual grid step
-             const centerLineY = centerY; // Precise center Y
+            for (let i = 0; i < currentLength; i++) {
+                // 現在のステップの波形値を取得 (データがなければ中央値を使用)
+                const value = (i < waveformData.length) ? waveformData[i] : currentCenterValue;
 
-             for (let i = 0; i < currentLength; i++) {
-                 const value = (i < waveformData.length) ? waveformData[i] : currentCenterValue;
+                // X座標と幅を計算 (垂直グリッド線に合わせるために丸める)
+                const rectX = Math.round(i * cellWidth);
+                const nextRectX = Math.round((i + 1) * cellWidth);
+                const rectWidth = Math.max(minRectWidth, nextRectX - rectX);
 
-                 // Ensure value is within the expected range [0, currentMaxValue]
-                 const clampedValue = Math.max(0, Math.min(currentMaxValue, value));
+                // 値を有効範囲 [0, currentMaxValue] にクランプ
+                const clampedValue = Math.max(0, Math.min(currentMaxValue, value));
+                // レベルインデックスkは値vに対応 (WAV10では k = v)
+                const levelIndex = clampedValue;
 
-                 // Map the value to the corresponding visual grid step index [0, numSteps-1]
-                 let stepIndex;
-                 if (currentMaxValue === (numSteps - 1)) {
-                     // Direct mapping (like WAV10)
-                     stepIndex = clampedValue;
-                 } else {
-                     // Scale value to step index for modes where value range != numSteps
-                     stepIndex = Math.round((clampedValue / currentMaxValue) * (numSteps - 1));
-                 }
-                 stepIndex = Math.max(0, Math.min(numSteps - 1, stepIndex)); // Clamp index
+                let fillTopY = 0; // 塗りつぶし矩形の開始Y座標
+                let fillHeight = 0; // 塗りつぶし矩形の高さ
 
-                 // Y coordinates of the top and bottom edges of the target grid cell
-                 // Remember Y=0 is top, Y=baseHeight is bottom
-                 const y_top_edge = baseHeight - (stepIndex + 1) * stepHeight;
-                 const y_bottom_edge = baseHeight - stepIndex * stepHeight;
+                // 値に基づいて塗りつぶし範囲を決定
+                if (levelIndex === centerLevelIndex) {
+                    // 値が中央値の場合: 中央線のすぐ上にある1マスを塗りつぶす
+                    // 中央レベルに対応するグリッドセルの上端Y座標
+                    fillTopY = (currentResolution - 1 - centerLevelIndex) * preciseStepHeight;
+                    // 高さは1ステップ分
+                    fillHeight = preciseStepHeight;
+                } else if (levelIndex > centerLevelIndex) {
+                    // 値が中央値より上の場合: レベルの上端から中央線までを塗りつぶす
+                    // このレベルのグリッドセルの上端Y座標
+                    fillTopY = (currentResolution - 1 - levelIndex) * preciseStepHeight;
+                    // 中央線 (centerY) が塗りつぶしの下端になる
+                    fillHeight = centerY - fillTopY;
+                } else { // levelIndex < centerLevelIndex
+                    // 値が中央値より下の場合: 中央線からレベルの下端までを塗りつぶす
+                    // このレベルのグリッドセルの下端Y座標
+                    const levelBottomY = (currentResolution - levelIndex) * preciseStepHeight;
+                    // 中央線 (centerY) が塗りつぶしの上端になる
+                    fillTopY = centerY;
+                    fillHeight = levelBottomY - centerY;
+                }
 
-                 // Clamp edge coordinates to canvas boundaries (use floor/ceil to align with pixel grid better?)
-                 const clamped_y_top = Math.max(0, Math.floor(y_top_edge));
-                 const clamped_y_bottom = Math.min(baseHeight, Math.ceil(y_bottom_edge));
-
-                 // Determine the fill rectangle boundaries (topY, bottomY)
-                 let topY, bottomY;
-                 const roundedCenterLineY = Math.round(centerLineY); // Use rounded center for comparison
-
-                 if (value >= currentCenterValue) {
-                     // Fill from center line up to the top edge of the cell
-                     topY = clamped_y_top;
-                     // Ensure bottom doesn't go above center line due to rounding
-                     bottomY = Math.min(roundedCenterLineY, clamped_y_bottom);
-                      // Correction: If value >= center, bottom should be the center line
-                     bottomY = roundedCenterLineY;
-
-                 } else {
-                     // Fill from center line down to the bottom edge of the cell
-                     // Ensure top doesn't go below center line
-                     topY = Math.max(roundedCenterLineY, clamped_y_top);
-                     // Correction: If value < center, top should be the center line
-                     topY = roundedCenterLineY;
-                     bottomY = clamped_y_bottom;
-                 }
-
-
-                 // Ensure topY <= bottomY after adjustments
-                  if (topY > bottomY) {
-                       // This might happen if center line rounding pushes boundaries across each other
-                       // e.g., if value is exactly center. Prioritize showing *something*.
-                      // If value is exactly center, draw the cell containing the center line?
-                      if (value === currentCenterValue) {
-                         // Find the step containing the center line
-                         const centerStepIndex = numSteps - 1 - Math.floor(centerLineY / stepHeight);
-                         topY = Math.max(0, Math.floor(baseHeight - (centerStepIndex + 1) * stepHeight));
-                         bottomY = Math.min(baseHeight, Math.ceil(baseHeight - centerStepIndex * stepHeight));
-                      } else {
-                          // If not exactly center, but rounding caused inversion, make it minimal height at center
-                          topY = roundedCenterLineY - minRectHeight / 2;
-                          bottomY = roundedCenterLineY + minRectHeight / 2;
-                      }
-                      // console.warn(`topY > bottomY detected for value ${value}. Adjusted to: ${topY} - ${bottomY}`);
-                  }
-
-                 // Calculate rectangle height
-                 let rectHeight = bottomY - topY;
-
-                 // Ensure minimum height for visibility only if the intended height was non-zero
-                 if (rectHeight < minRectHeight && Math.abs(clamped_y_bottom - clamped_y_top) >= minRectHeight) {
-                     // If the actual cell had height, but calculation resulted in < minRectHeight
-                     rectHeight = minRectHeight;
-                     if (value >= currentCenterValue) { // Fill was upwards
-                         bottomY = Math.min(baseHeight, topY + minRectHeight); // Adjust bottom down
-                     } else { // Fill was downwards
-                         topY = Math.max(0, bottomY - minRectHeight); // Adjust top up
-                     }
-                     // Recalculate clamped height
-                     rectHeight = bottomY - topY;
-                 }
+                // 高さがある場合、視認性のための最小高さを確保
+                if (fillHeight !== 0 && Math.abs(fillHeight) < minRectHeight) {
+                    // 高さを最小値に調整（符号は維持）
+                    const adjustedHeight = Math.sign(fillHeight || 1) * minRectHeight;
+                    // 元の塗りつぶしが中央線上またはそれより上で、高さを調整する必要があった場合のみ topY を調整
+                    if (levelIndex >= centerLevelIndex) {
+                        // 元の矩形の下端を維持するように topY を調整
+                        fillTopY = fillTopY + fillHeight - adjustedHeight;
+                    }
+                    fillHeight = adjustedHeight; // 高さを更新
+                }
 
 
-                 // Calculate X position and width
-                 const rectX = Math.round(i * cellWidth);
-                 const nextRectX = Math.round((i + 1) * cellWidth);
-                 let rectWidth = Math.max(minRectWidth, nextRectX - rectX);
+                // 最終的な描画座標をキャンバス境界内にクランプ
+                const clampedFillTopY = Math.max(0, Math.min(baseHeight, fillTopY));
+                const clampedFillBottomY = Math.max(0, Math.min(baseHeight, fillTopY + fillHeight));
+                // クランプ後の最終的な高さを再計算
+                const finalHeight = clampedFillBottomY - clampedFillTopY;
 
-                 // Final draw call, only if height is positive
-                 if (rectHeight >= minRectHeight && rectWidth >= minRectWidth) {
-                     ctx.fillRect(rectX, topY, rectWidth, rectHeight);
-                 } else if (rectHeight > 0 && rectWidth > 0) {
-                      // Draw even if slightly below min height if it's non-zero?
-                      // console.log(`Drawing small rect: h=${rectHeight.toFixed(2)} @ y=${topY.toFixed(2)}`)
-                      // ctx.fillRect(rectX, topY, rectWidth, rectHeight);
-                 }
-             }
-         }
-         // === END REVISED drawWaveform Function ===
+
+                // 最終的な高さが正で、幅も最小幅以上の場合のみ描画
+                if (finalHeight > 0 && rectWidth >= minRectWidth) {
+                    ctx.fillRect(rectX, clampedFillTopY, rectWidth, finalHeight);
+                }
+            }
+        }
+        // === END REVISED drawWaveform Function ===
 
 
         function updateOutputTextarea() {
-             let hexString; const prefix = currentWavMode === 'wav10' ? "#WAV10 0," : "#WAV13 0,";
-             // Ensure waveformData has correct length before mapping
-             if (!waveformData || waveformData.length !== currentLength) {
+            let hexString; const prefix = currentWavMode === 'wav10' ? "#WAV10 0," : "#WAV13 0,";
+            // Ensure waveformData has correct length before mapping
+            if (!waveformData || waveformData.length !== currentLength) {
                 const currentData = waveformData ? [...waveformData] : []; // Handle undefined case
                 while (currentData.length < currentLength) currentData.push(currentCenterValue);
                 waveformData = currentData.slice(0, currentLength); // Correct the array
-             }
+            }
 
-             try {
-                 if (currentWavMode === 'wav10') {
-                     hexString = waveformData.map(val => Math.max(0, Math.min(15, Math.round(val))).toString(16).toUpperCase()).join('');
-                 } else {
-                     hexString = waveformData.map(val => Math.max(0, Math.min(255, Math.round(val))).toString(16).toUpperCase().padStart(2, '0')).join('');
-                 }
-             } catch (e) {
-                 console.error("Error generating hex string:", e, waveformData);
-                 hexString = ""; // Prevent error propagation
-                 outputWaveform.classList.add('invalid'); // Mark as invalid
-             }
+            try {
+                if (currentWavMode === 'wav10') {
+                    hexString = waveformData.map(val => Math.max(0, Math.min(15, Math.round(val))).toString(16).toUpperCase()).join('');
+                } else {
+                    hexString = waveformData.map(val => Math.max(0, Math.min(255, Math.round(val))).toString(16).toUpperCase().padStart(2, '0')).join('');
+                }
+            } catch (e) {
+                console.error("Error generating hex string:", e, waveformData);
+                hexString = ""; // Prevent error propagation
+                outputWaveform.classList.add('invalid'); // Mark as invalid
+            }
 
-             const fullString = prefix + hexString; if (outputWaveform.value === fullString && !outputWaveform.classList.contains('invalid')) return; // Only update if changed or was invalid
+            const fullString = prefix + hexString; if (outputWaveform.value === fullString && !outputWaveform.classList.contains('invalid')) return; // Only update if changed or was invalid
 
-             let cursorStart = -1; if (document.activeElement === outputWaveform) { try { cursorStart = outputWaveform.selectionStart; } catch (e) {} }
-             outputWaveform.value = fullString;
-             // Re-validate based on generated string (in case of errors during generation)
-             if (hexString.length === (currentWavMode === 'wav10' ? currentLength : currentLength * 2)) {
+            let cursorStart = -1; if (document.activeElement === outputWaveform) { try { cursorStart = outputWaveform.selectionStart; } catch (e) { } }
+            outputWaveform.value = fullString;
+            // Re-validate based on generated string (in case of errors during generation)
+            if (hexString.length === (currentWavMode === 'wav10' ? currentLength : currentLength * 2)) {
                 outputWaveform.classList.remove('invalid');
-             } else {
-                 outputWaveform.classList.add('invalid');
-             }
-             if (cursorStart !== -1) { try { outputWaveform.setSelectionRange(cursorStart, cursorStart); } catch (e) {} }
-         }
+            } else {
+                outputWaveform.classList.add('invalid');
+            }
+            if (cursorStart !== -1) { try { outputWaveform.setSelectionRange(cursorStart, cursorStart); } catch (e) { } }
+        }
 
         // --- Main Redraw Function ---
         function redraw() {
@@ -595,19 +869,19 @@ C D E F G A B < C</textarea>
                 requestAnimationFrame(redraw); // Try again on next frame if canvas might resize
                 return;
             }
-             const cw = canvas.clientWidth;
-             // Check if canvas size *actually* changed significantly before resizing
-             if (Math.abs(baseWidth - cw) > 1 && cw > 0) {
-                 console.log("Canvas clientWidth changed, re-running setupCanvas.");
-                 setupCanvas();
-                 // Re-initialize Bezier if in Bezier mode, as anchors depend on size
-                 if (currentEditMode === 'bezier' && typeof initializeBezier === 'function') {
-                     initializeBezier();
-                     if (typeof generateWaveformFromBezier === 'function') {
-                         generateWaveformFromBezier();
-                     }
-                 }
-             } else if (!cw && canvas.offsetParent === null) { return; } // Skip if hidden
+            const cw = canvas.clientWidth;
+            // Check if canvas size *actually* changed significantly before resizing
+            if (Math.abs(baseWidth - cw) > 1 && cw > 0) {
+                console.log("Canvas clientWidth changed, re-running setupCanvas.");
+                setupCanvas();
+                // Re-initialize Bezier if in Bezier mode, as anchors depend on size
+                if (currentEditMode === 'bezier' && typeof initializeBezier === 'function') {
+                    initializeBezier();
+                    if (typeof generateWaveformFromBezier === 'function') {
+                        generateWaveformFromBezier();
+                    }
+                }
+            } else if (!cw && canvas.offsetParent === null) { return; } // Skip if hidden
 
             ctx.clearRect(0, 0, baseWidth, baseHeight); // Use baseWidth/baseHeight which match canvas internal size
             if (currentEditMode === 'grid') {
@@ -617,13 +891,13 @@ C D E F G A B < C</textarea>
             else if (currentEditMode === 'bezier') {
                 // Draw Bezier stuff only if functions exist
                 if (typeof drawBezierEditor === 'function' && typeof generateWaveformFromBezier === 'function') {
-                     const originalAlpha = ctx.globalAlpha;
-                     ctx.globalAlpha = 0.3; drawGrid(); // Draw grid semi-transparently
-                     ctx.globalAlpha = originalAlpha; drawBezierEditor(); // Draw Bezier editor on top
+                    const originalAlpha = ctx.globalAlpha;
+                    ctx.globalAlpha = 0.3; drawGrid(); // Draw grid semi-transparently
+                    ctx.globalAlpha = originalAlpha; drawBezierEditor(); // Draw Bezier editor on top
                 } else {
-                     console.warn("Bezier functions not found during redraw. Drawing grid only.");
-                     drawGrid(); // Fallback to drawing grid if Bezier isn't ready
-                     drawWaveform(); // Also draw waveform in this fallback case
+                    console.warn("Bezier functions not found during redraw. Drawing grid only.");
+                    drawGrid(); // Fallback to drawing grid if Bezier isn't ready
+                    drawWaveform(); // Also draw waveform in this fallback case
                 }
             }
             updateOutputTextarea();
@@ -636,47 +910,47 @@ C D E F G A B < C</textarea>
         function generateTriangle() { const data = new Array(currentLength); const half = Math.floor(currentLength / 2); const peakValue = currentMaxValue; for (let i = 0; i < currentLength; i++) { let v; if (i < half) { v = i / (half > 0 ? half : 1) * peakValue; } else { v = (currentLength - 1 - i) / (currentLength - 1 - half >= 0 ? currentLength - 1 - half : 1) * peakValue; } data[i] = quantizeValue(v); } return data; }
         function generateRandom() { const data = new Array(currentLength); for (let i = 0; i < currentLength; i++) { let v = Math.random() * (currentMaxValue + 1); data[i] = quantizeValue(v); } return data; }
         function applyPreset(type) {
-             isSquareActive = (type === 'square');
-             let presetApplied = false;
-             // Handle presets differently based on mode
-             if (currentEditMode === 'bezier' && typeof initializeBezier === 'function') {
-                 if (type === 'reset') {
-                     initializeBezier(); // Reset Bezier points
-                     if(typeof generateWaveformFromBezier === 'function') {
-                         generateWaveformFromBezier(); // Generate from reset points
-                         presetApplied = true;
-                     }
-                 } else {
-                     // Apply waveform data directly for other presets in Bezier mode.
-                     switch(type) {
+            isSquareActive = (type === 'square');
+            let presetApplied = false;
+            // Handle presets differently based on mode
+            if (currentEditMode === 'bezier' && typeof initializeBezier === 'function') {
+                if (type === 'reset') {
+                    initializeBezier(); // Reset Bezier points
+                    if (typeof generateWaveformFromBezier === 'function') {
+                        generateWaveformFromBezier(); // Generate from reset points
+                        presetApplied = true;
+                    }
+                } else {
+                    // Apply waveform data directly for other presets in Bezier mode.
+                    switch (type) {
                         case 'sine': waveformData = generateSine(); presetApplied = true; break;
                         case 'saw': waveformData = generateSaw(); presetApplied = true; break;
                         case 'square': waveformData = generateSquare(currentDuty); presetApplied = true; break;
                         case 'triangle': waveformData = generateTriangle(); presetApplied = true; break;
                         case 'random': waveformData = generateRandom(); presetApplied = true; break;
-                     }
-                     // Note: Bezier curve itself won't match the preset waveform visually
-                 }
-             } else { // Grid mode
-                 switch(type) {
-                     case 'sine': waveformData = generateSine(); presetApplied = true; break;
-                     case 'saw': waveformData = generateSaw(); presetApplied = true; break;
-                     case 'square': waveformData = generateSquare(currentDuty); presetApplied = true; break;
-                     case 'triangle': waveformData = generateTriangle(); presetApplied = true; break;
-                     case 'random': waveformData = generateRandom(); presetApplied = true; break;
-                     case 'reset':
-                         waveformData = new Array(currentLength).fill(currentCenterValue);
-                         currentDuty = 50;
-                         isSquareActive = false;
-                         presetApplied = true;
-                         break;
-                 }
-             }
+                    }
+                    // Note: Bezier curve itself won't match the preset waveform visually
+                }
+            } else { // Grid mode
+                switch (type) {
+                    case 'sine': waveformData = generateSine(); presetApplied = true; break;
+                    case 'saw': waveformData = generateSaw(); presetApplied = true; break;
+                    case 'square': waveformData = generateSquare(currentDuty); presetApplied = true; break;
+                    case 'triangle': waveformData = generateTriangle(); presetApplied = true; break;
+                    case 'random': waveformData = generateRandom(); presetApplied = true; break;
+                    case 'reset':
+                        waveformData = new Array(currentLength).fill(currentCenterValue);
+                        currentDuty = 50;
+                        isSquareActive = false;
+                        presetApplied = true;
+                        break;
+                }
+            }
 
-             if (presetApplied) {
-                 redraw();
-             }
-         }
+            if (presetApplied) {
+                redraw();
+            }
+        }
 
 
         // --- Event Listeners ---
@@ -709,191 +983,165 @@ C D E F G A B < C</textarea>
             const pos = getEventCoords(event);
             const currentX = pos.x; const currentY = pos.y; let dataChanged = false;
 
-             // Clamp Y to prevent extreme values before calculating value
-             const clampedY = Math.max(0, Math.min(baseHeight, currentY));
-
-             // Calculate stepHeight based on the effective resolution
-             const hLineRes = (currentWavMode === 'wav13' && currentQuantizeLevels < 256) ? currentQuantizeLevels : currentResolution;
-             const numSteps = hLineRes > 0 ? hLineRes : 1;
-             const stepHeight = baseHeight / numSteps;
-
+            // Clamp Y to prevent extreme values before calculating value
+            const clampedY = Math.max(0, Math.min(baseHeight, currentY));
 
             if (lastDrawX !== null && lastDrawY !== null) {
                 const x0 = lastDrawX; const y0 = lastDrawY; const x1 = currentX; const y1 = clampedY; // Use clamped Y for interpolation end
                 let startIndex = Math.floor(x0 / cellWidth); let endIndex = Math.floor(x1 / cellWidth);
                 // Ensure indices are valid
-                 startIndex = Math.max(0, Math.min(currentLength - 1, startIndex));
-                 endIndex = Math.max(0, Math.min(currentLength - 1, endIndex));
+                startIndex = Math.max(0, Math.min(currentLength - 1, startIndex));
+                endIndex = Math.max(0, Math.min(currentLength - 1, endIndex));
 
                 if (startIndex > endIndex) { [startIndex, endIndex] = [endIndex, startIndex]; }
 
-                const numInterpSteps = Math.max(1, Math.abs(endIndex - startIndex)); // Use absolute difference
+                const numSteps = Math.max(1, Math.abs(endIndex - startIndex)); // Use absolute difference
 
-                 for (let step = 0; step <= numInterpSteps; step++) {
-                      const i = startIndex + step;
-                      // Ensure index i is within bounds
-                      if (i >= currentLength) continue;
+                for (let step = 0; step <= numSteps; step++) {
+                    const i = startIndex + step;
+                    // Ensure index i is within bounds
+                    if (i >= currentLength) continue;
 
-                      let t_idx = numInterpSteps === 0 ? 0.5 : step / numInterpSteps;
-                      const interpolatedY = y0 + (y1 - y0) * t_idx;
-                      const clampedInterpolatedY = Math.max(0, Math.min(baseHeight, interpolatedY)); // Clamp intermediate Y
+                    let t_idx = numSteps === 0 ? 0.5 : step / numSteps;
+                    const interpolatedY = y0 + (y1 - y0) * t_idx;
+                    const clampedInterpolatedY = Math.max(0, Math.min(baseHeight, interpolatedY)); // Clamp intermediate Y
 
-                      // Map interpolated Y to a value based on the grid step it falls into
-                      // Y=0 is top, Y=baseHeight is bottom
-                      const targetStepIndex = numSteps - 1 - Math.floor(clampedInterpolatedY / stepHeight);
-                      const clampedStepIndex = Math.max(0, Math.min(numSteps - 1, targetStepIndex));
+                    // Map Y to value (Y=0 is top, corresponds to max value)
+                    // Calculate raw value based on pixel position relative to baseHeight
+                    const rawValue = (baseHeight - clampedInterpolatedY) / baseHeight * currentMaxValue;
+                    const finalValue = quantizeValue(rawValue); // Quantize based on mode/resolution
 
-                      // Convert step index back to value range
-                      let rawValue;
-                      if (currentMaxValue === (numSteps - 1)) {
-                         rawValue = clampedStepIndex; // Direct mapping
-                      } else {
-                         rawValue = (clampedStepIndex / (numSteps - 1)) * currentMaxValue; // Scale back
-                      }
-
-                      const finalValue = quantizeValue(rawValue); // Apply final quantization/clamping
-
-                      if (i >= 0 && i < waveformData.length && waveformData[i] !== finalValue) {
-                          waveformData[i] = finalValue;
-                          dataChanged = true;
-                       }
-                 }
+                    if (i >= 0 && i < waveformData.length && waveformData[i] !== finalValue) {
+                        waveformData[i] = finalValue;
+                        dataChanged = true;
+                    }
+                }
             } else { // Handle single point draw
                 const gridX = Math.floor(currentX / cellWidth);
-                if(gridX >= 0 && gridX < currentLength) {
-                     // Map Y to value based on grid step
-                      const targetStepIndex = numSteps - 1 - Math.floor(clampedY / stepHeight);
-                      const clampedStepIndex = Math.max(0, Math.min(numSteps - 1, targetStepIndex));
-
-                      let rawValue;
-                      if (currentMaxValue === (numSteps - 1)) {
-                         rawValue = clampedStepIndex; // Direct mapping
-                      } else {
-                         rawValue = (clampedStepIndex / (numSteps - 1)) * currentMaxValue; // Scale back
-                      }
-
-                     const finalValue = quantizeValue(rawValue); // Apply final quantization/clamping
-
-                    if(waveformData[gridX] !== finalValue) { waveformData[gridX] = finalValue; dataChanged = true; }
+                if (gridX >= 0 && gridX < currentLength) {
+                    // Map Y to value
+                    const rawValue = (baseHeight - clampedY) / baseHeight * currentMaxValue;
+                    const finalValue = quantizeValue(rawValue);
+                    if (waveformData[gridX] !== finalValue) { waveformData[gridX] = finalValue; dataChanged = true; }
                 }
             }
             lastDrawX = currentX; lastDrawY = clampedY; // Store clamped Y for next interpolation start
             if (dataChanged) { redraw(); }
         }
 
-         // --- Grid Mode Specific Event Handlers ---
-         function gridMouseDown(evt) { if(evt.button!==0) return; isDrawing=true; lastDrawX=null; lastDrawY=null; canvas.style.cursor='crosshair'; handleGridDraw(evt); }
-         // gridMouseMove handled globally
-         function gridTouchStart(evt) { if (evt.touches.length === 1) { evt.preventDefault(); isDrawing = true; lastDrawX=null; lastDrawY=null; handleGridDraw(evt); } }
-         // gridTouchMove handled globally
+        // --- Grid Mode Specific Event Handlers ---
+        function gridMouseDown(evt) { if (evt.button !== 0) return; isDrawing = true; lastDrawX = null; lastDrawY = null; canvas.style.cursor = 'crosshair'; handleGridDraw(evt); }
+        // gridMouseMove handled globally
+        function gridTouchStart(evt) { if (evt.touches.length === 1) { evt.preventDefault(); isDrawing = true; lastDrawX = null; lastDrawY = null; handleGridDraw(evt); } }
+        // gridTouchMove handled globally
 
         // --- Function to attach/detach listeners based on mode ---
         function updateEventListeners() {
-             // Remove all potentially conflicting listeners first
-             canvas.removeEventListener('mousedown', gridMouseDown);
-             canvas.removeEventListener('touchstart', gridTouchStart, { passive: false });
-             const bezierFuncsExist = typeof window.bezierMouseDown === 'function'; // Check only essential function?
-             if (bezierFuncsExist) {
-                 canvas.removeEventListener('mousedown', window.bezierMouseDown);
-                 canvas.removeEventListener('touchstart', window.bezierTouchStart, { passive: false });
-             }
+            // Remove all potentially conflicting listeners first
+            canvas.removeEventListener('mousedown', gridMouseDown);
+            canvas.removeEventListener('touchstart', gridTouchStart, { passive: false });
+            const bezierFuncsExist = typeof window.bezierMouseDown === 'function'; // Check only essential function?
+            if (bezierFuncsExist) {
+                canvas.removeEventListener('mousedown', window.bezierMouseDown);
+                canvas.removeEventListener('touchstart', window.bezierTouchStart, { passive: false });
+            }
 
-             // Add listeners for the current mode
-             if (currentEditMode === 'grid') {
-                 canvas.style.cursor = 'crosshair';
-                 canvas.addEventListener('mousedown', gridMouseDown);
-                 canvas.addEventListener('touchstart', gridTouchStart, { passive: false });
-             } else if (currentEditMode === 'bezier') {
-                 canvas.style.cursor = 'default';
-                 if (bezierFuncsExist && typeof window.bezierTouchStart === 'function') { // Ensure all needed funcs exist
-                     console.log("Attaching Bezier Down/Start Listeners to Canvas");
-                     canvas.addEventListener('mousedown', window.bezierMouseDown);
-                     canvas.addEventListener('touchstart', window.bezierTouchStart, { passive: false });
-                 } else {
-                     console.warn("Cannot attach Bezier listeners: Functions not found.");
-                 }
-             }
-         }
+            // Add listeners for the current mode
+            if (currentEditMode === 'grid') {
+                canvas.style.cursor = 'crosshair';
+                canvas.addEventListener('mousedown', gridMouseDown);
+                canvas.addEventListener('touchstart', gridTouchStart, { passive: false });
+            } else if (currentEditMode === 'bezier') {
+                canvas.style.cursor = 'default';
+                if (bezierFuncsExist && typeof window.bezierTouchStart === 'function') { // Ensure all needed funcs exist
+                    console.log("Attaching Bezier Down/Start Listeners to Canvas");
+                    canvas.addEventListener('mousedown', window.bezierMouseDown);
+                    canvas.addEventListener('touchstart', window.bezierTouchStart, { passive: false });
+                } else {
+                    console.warn("Cannot attach Bezier listeners: Functions not found.");
+                }
+            }
+        }
 
         // --- Global (Window) Listeners for Move/Up/End ---
         window.addEventListener('mousemove', (evt) => {
-             // Check if Bezier point dragging is active
-             if (typeof window.isDraggingBezierPoint !== 'undefined' && window.isDraggingBezierPoint && typeof window.bezierMouseMove === 'function') {
-                 window.bezierMouseMove(evt); // Delegate to Bezier handler
-             }
-             else if (isDrawing) { // Check grid drawing
-                 handleGridDraw(evt); // Handle grid drawing if active
-             } else if (isDraggingDuty) { // Check duty cycle drag
-                 updateDutyFromEvent(evt); // Handle duty cycle dragging
-             }
+            // Check if Bezier point dragging is active
+            if (typeof window.isDraggingBezierPoint !== 'undefined' && window.isDraggingBezierPoint && typeof window.bezierMouseMove === 'function') {
+                window.bezierMouseMove(evt); // Delegate to Bezier handler
+            }
+            else if (isDrawing) { // Check grid drawing
+                handleGridDraw(evt); // Handle grid drawing if active
+            } else if (isDraggingDuty) { // Check duty cycle drag
+                updateDutyFromEvent(evt); // Handle duty cycle dragging
+            }
         });
 
-         window.addEventListener('touchmove', (evt) => {
-             // Check if Bezier point dragging is active
-             if (typeof window.isDraggingBezierPoint !== 'undefined' && window.isDraggingBezierPoint && typeof window.bezierTouchMove === 'function') {
-                  if (evt.touches.length === 1) {
-                       evt.preventDefault(); // Prevent scrolling during Bezier drag
-                       window.bezierTouchMove(evt); // Delegate to Bezier handler
-                  }
-             }
-             else if (isDrawing) { // Check grid drawing
-                 if (evt.touches.length === 1) {
-                     evt.preventDefault(); // Prevent scrolling during grid draw
-                     handleGridDraw(evt); // Handle grid drawing
-                 }
-             } else if (isDraggingDuty) { // Check duty cycle drag
-                  if (evt.touches.length === 1) {
-                        evt.preventDefault(); // Prevent scrolling during duty drag
-                       updateDutyFromEvent(evt); // Handle duty cycle dragging
-                  }
-             }
-         }, { passive: false }); // Need passive: false to preventDefault
+        window.addEventListener('touchmove', (evt) => {
+            // Check if Bezier point dragging is active
+            if (typeof window.isDraggingBezierPoint !== 'undefined' && window.isDraggingBezierPoint && typeof window.bezierTouchMove === 'function') {
+                if (evt.touches.length === 1) {
+                    evt.preventDefault(); // Prevent scrolling during Bezier drag
+                    window.bezierTouchMove(evt); // Delegate to Bezier handler
+                }
+            }
+            else if (isDrawing) { // Check grid drawing
+                if (evt.touches.length === 1) {
+                    evt.preventDefault(); // Prevent scrolling during grid draw
+                    handleGridDraw(evt); // Handle grid drawing
+                }
+            } else if (isDraggingDuty) { // Check duty cycle drag
+                if (evt.touches.length === 1) {
+                    evt.preventDefault(); // Prevent scrolling during duty drag
+                    updateDutyFromEvent(evt); // Handle duty cycle dragging
+                }
+            }
+        }, { passive: false }); // Need passive: false to preventDefault
 
-        window.addEventListener('mouseup', (evt)=>{
-             const wasDrawingGrid = isDrawing;
-             const wasDraggingBezier = typeof window.isDraggingBezierPoint !== 'undefined' && window.isDraggingBezierPoint;
-             const wasDraggingDuty = isDraggingDuty;
+        window.addEventListener('mouseup', (evt) => {
+            const wasDrawingGrid = isDrawing;
+            const wasDraggingBezier = typeof window.isDraggingBezierPoint !== 'undefined' && window.isDraggingBezierPoint;
+            const wasDraggingDuty = isDraggingDuty;
 
-             if(wasDrawingGrid && evt.button === 0){ isDrawing=false; lastDrawX=null; lastDrawY=null; }
-             if(wasDraggingDuty){ isDraggingDuty = false; presetSquareBtn.style.cursor = 'ew-resize'; document.body.style.cursor = 'default'; }
-             // Call Bezier mouse up regardless of button? Yes, to release state.
-             if(wasDraggingBezier && typeof window.bezierMouseUp === 'function') { window.bezierMouseUp(evt); }
+            if (wasDrawingGrid && evt.button === 0) { isDrawing = false; lastDrawX = null; lastDrawY = null; }
+            if (wasDraggingDuty) { isDraggingDuty = false; presetSquareBtn.style.cursor = 'ew-resize'; document.body.style.cursor = 'default'; }
+            // Call Bezier mouse up regardless of button? Yes, to release state.
+            if (wasDraggingBezier && typeof window.bezierMouseUp === 'function') { window.bezierMouseUp(evt); }
 
-             // Reset cursor based on the final state
-             canvas.style.cursor = (currentEditMode === 'bezier' && !window.isDraggingBezierPoint) ? 'default' :
-                                  (currentEditMode === 'grid' && !isDrawing) ? 'crosshair' : canvas.style.cursor;
-             if (!isDraggingDuty) presetSquareBtn.style.cursor = 'ew-resize';
+            // Reset cursor based on the final state
+            canvas.style.cursor = (currentEditMode === 'bezier' && !window.isDraggingBezierPoint) ? 'default' :
+                (currentEditMode === 'grid' && !isDrawing) ? 'crosshair' : canvas.style.cursor;
+            if (!isDraggingDuty) presetSquareBtn.style.cursor = 'ew-resize';
 
         });
         // Leave mouseleave as is for duty cycle
-        window.addEventListener('mouseleave', () => { if(isDraggingDuty){ isDraggingDuty = false; presetSquareBtn.style.cursor = 'ew-resize'; document.body.style.cursor = 'default'; } });
+        window.addEventListener('mouseleave', () => { if (isDraggingDuty) { isDraggingDuty = false; presetSquareBtn.style.cursor = 'ew-resize'; document.body.style.cursor = 'default'; } });
 
         window.addEventListener('touchend', (evt) => {
-             const wasDrawingGrid = isDrawing;
-             const wasDraggingBezier = typeof window.isDraggingBezierPoint !== 'undefined' && window.isDraggingBezierPoint;
-             const wasDraggingDuty = isDraggingDuty;
+            const wasDrawingGrid = isDrawing;
+            const wasDraggingBezier = typeof window.isDraggingBezierPoint !== 'undefined' && window.isDraggingBezierPoint;
+            const wasDraggingDuty = isDraggingDuty;
 
-             if(wasDrawingGrid){ isDrawing=false; lastDrawX=null; lastDrawY=null; }
-             if(wasDraggingDuty){ isDraggingDuty = false; presetSquareBtn.style.cursor = 'ew-resize'; document.body.style.cursor = 'default'; }
-             if(wasDraggingBezier && typeof window.bezierTouchEnd === 'function') { window.bezierTouchEnd(evt); }
+            if (wasDrawingGrid) { isDrawing = false; lastDrawX = null; lastDrawY = null; }
+            if (wasDraggingDuty) { isDraggingDuty = false; presetSquareBtn.style.cursor = 'ew-resize'; document.body.style.cursor = 'default'; }
+            if (wasDraggingBezier && typeof window.bezierTouchEnd === 'function') { window.bezierTouchEnd(evt); }
 
-             // Reset cursor based on mode after touch ends
-              canvas.style.cursor = currentEditMode === 'grid' ? 'crosshair' : 'default';
+            // Reset cursor based on mode after touch ends
+            canvas.style.cursor = currentEditMode === 'grid' ? 'crosshair' : 'default';
         });
-         window.addEventListener('touchcancel', (evt) => {
-              // Treat cancel like end
-              const wasDraggingBezier = typeof window.isDraggingBezierPoint !== 'undefined' && window.isDraggingBezierPoint;
+        window.addEventListener('touchcancel', (evt) => {
+            // Treat cancel like end
+            const wasDraggingBezier = typeof window.isDraggingBezierPoint !== 'undefined' && window.isDraggingBezierPoint;
 
-              isDrawing=false; lastDrawX=null; lastDrawY=null;
-              if(isDraggingDuty){ isDraggingDuty = false; presetSquareBtn.style.cursor = 'ew-resize'; document.body.style.cursor = 'default'; }
-              if(wasDraggingBezier && typeof window.bezierTouchCancel === 'function') { window.bezierTouchCancel(evt); }
+            isDrawing = false; lastDrawX = null; lastDrawY = null;
+            if (isDraggingDuty) { isDraggingDuty = false; presetSquareBtn.style.cursor = 'ew-resize'; document.body.style.cursor = 'default'; }
+            if (wasDraggingBezier && typeof window.bezierTouchCancel === 'function') { window.bezierTouchCancel(evt); }
 
-               canvas.style.cursor = currentEditMode === 'grid' ? 'crosshair' : 'default';
-         });
+            canvas.style.cursor = currentEditMode === 'grid' ? 'crosshair' : 'default';
+        });
 
-        copyButton.addEventListener('click', ()=>{ outputWaveform.select(); navigator.clipboard.writeText(outputWaveform.value).then(()=>{ copyButton.textContent='コピー完了!'; copyButton.classList.add('copied'); setTimeout(()=>{ copyButton.textContent='コピー'; copyButton.classList.remove('copied'); }, 1500); }).catch(err=>{ console.error('テキストのコピーに失敗: ', err); alert('テキストのコピーに失敗しました。'); }); });
-        playButton.addEventListener('click', ()=>{ const generatedWav = outputWaveform.value; const userMML = testMMLTextarea.value; const instrumentCmd = currentWavMode === 'wav13' ? '@13-0' : '@10-0'; const playbackMML = `${generatedWav}\n${instrumentCmd}\n${userMML}`; console.log("再生MML:\n", playbackMML); try{ flmml.play(playbackMML); } catch (e) { console.error("FlMML 再生エラー:", e); alert("MMLの再生中にエラーが発生しました。コンソールを確認してください。"); } });
-        stopButton.addEventListener('click', ()=>{ flmml.stop(); });
+        copyButton.addEventListener('click', () => { outputWaveform.select(); navigator.clipboard.writeText(outputWaveform.value).then(() => { copyButton.textContent = 'コピー完了!'; copyButton.classList.add('copied'); setTimeout(() => { copyButton.textContent = 'コピー'; copyButton.classList.remove('copied'); }, 1500); }).catch(err => { console.error('テキストのコピーに失敗: ', err); alert('テキストのコピーに失敗しました。'); }); });
+        playButton.addEventListener('click', () => { const generatedWav = outputWaveform.value; const userMML = testMMLTextarea.value; const instrumentCmd = currentWavMode === 'wav13' ? '@13-0' : '@10-0'; const playbackMML = `${generatedWav}\n${instrumentCmd}\n${userMML}`; console.log("再生MML:\n", playbackMML); try { flmml.play(playbackMML); } catch (e) { console.error("FlMML 再生エラー:", e); alert("MMLの再生中にエラーが発生しました。コンソールを確認してください。"); } });
+        stopButton.addEventListener('click', () => { flmml.stop(); });
         presetSineBtn.addEventListener('click', () => applyPreset('sine'));
         presetSawBtn.addEventListener('click', () => applyPreset('saw'));
         presetTriangleBtn.addEventListener('click', () => applyPreset('triangle'));
@@ -902,150 +1150,165 @@ C D E F G A B < C</textarea>
 
         // --- Duty Cycle Drag Logic ---
         function updateDutyFromEvent(event) {
-             const rect = presetSquareBtn.getBoundingClientRect();
-             const clientX = event.touches ? event.touches[0].clientX : event.clientX;
-             const x = clientX - rect.left;
-             let duty = Math.round((x / rect.width) * 100);
-             duty = Math.max(5, Math.min(95, duty)); // Clamp duty cycle 5-95%
-             if (duty !== currentDuty || !isSquareActive) {
-                 currentDuty = duty;
-                 waveformData = generateSquare(currentDuty);
-                 isSquareActive = true; // Mark as active square wave
-                 redraw();
-                 presetSquareBtn.title = `矩形波 (デューティ比 ${currentDuty}%)`;
-             }
+            const rect = presetSquareBtn.getBoundingClientRect();
+            const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+            const x = clientX - rect.left;
+            let duty = Math.round((x / rect.width) * 100);
+            duty = Math.max(5, Math.min(95, duty)); // Clamp duty cycle 5-95%
+            if (duty !== currentDuty || !isSquareActive) {
+                currentDuty = duty;
+                waveformData = generateSquare(currentDuty);
+                isSquareActive = true; // Mark as active square wave
+                redraw();
+                presetSquareBtn.title = `矩形波 (デューティ比 ${currentDuty}%)`;
+            }
         }
         presetSquareBtn.addEventListener('mousedown', (e) => {
-             e.preventDefault();
-             if (!isSquareActive) { // If not currently square, reset duty on click
-                 currentDuty = 50;
-                 presetSquareBtn.title = `矩形波 (ドラッグでデューティ比変更)`;
-             }
-             isDraggingDuty = true;
-             presetSquareBtn.style.cursor = 'grabbing';
-             document.body.style.cursor = 'ew-resize'; // Indicate dragging possibility globally
-             updateDutyFromEvent(e); // Apply initial duty based on click position
+            e.preventDefault();
+            if (!isSquareActive) { // If not currently square, reset duty on click
+                currentDuty = 50;
+                presetSquareBtn.title = `矩形波 (ドラッグでデューティ比変更)`;
+            }
+            isDraggingDuty = true;
+            presetSquareBtn.style.cursor = 'grabbing';
+            document.body.style.cursor = 'ew-resize'; // Indicate dragging possibility globally
+            updateDutyFromEvent(e); // Apply initial duty based on click position
         });
         presetSquareBtn.addEventListener('touchstart', (e) => {
-             e.preventDefault();
-             if (!isSquareActive) { currentDuty = 50; presetSquareBtn.title = `矩形波 (ドラッグでデューティ比変更)`; }
-             isDraggingDuty = true;
-             // No cursor change needed for touch
-             updateDutyFromEvent(e);
+            e.preventDefault();
+            if (!isSquareActive) { currentDuty = 50; presetSquareBtn.title = `矩形波 (ドラッグでデューティ比変更)`; }
+            isDraggingDuty = true;
+            // No cursor change needed for touch
+            updateDutyFromEvent(e);
         }, { passive: false });
         // Duty cycle move handled by global window listeners
 
         // --- Textarea Input Synchronization ---
         outputWaveform.addEventListener('input', (event) => {
-             const text = outputWaveform.value;
-             let currentCursorPos = -1; try { currentCursorPos = outputWaveform.selectionStart; } catch(e) {}
-             const expectedPrefix = currentWavMode === 'wav10' ? "#WAV10 0," : "#WAV13 0,";
-             const hexDigitsPerSample = currentWavMode === 'wav10' ? 1 : 2;
-             const expectedHexLength = currentLength * hexDigitsPerSample;
-             const hexRegex = new RegExp(`^[0-9a-fA-F]{${expectedHexLength}}$`); // Stricter regex
+            const text = outputWaveform.value;
+            let currentCursorPos = -1; try { currentCursorPos = outputWaveform.selectionStart; } catch (e) { }
+            const expectedPrefix = currentWavMode === 'wav10' ? "#WAV10 0," : "#WAV13 0,";
+            const hexDigitsPerSample = currentWavMode === 'wav10' ? 1 : 2;
+            const expectedHexLength = currentLength * hexDigitsPerSample;
+            const hexRegex = new RegExp(`^[0-9a-fA-F]{${expectedHexLength}}$`); // Stricter regex
 
-             if (text.startsWith(expectedPrefix)) {
-                 let hexPart = text.substring(expectedPrefix.length);
-                 const originalLength = hexPart.length;
-                 const cleanedHexPart = hexPart.replace(/\s+/g, ''); // Remove all whitespace
+            if (text.startsWith(expectedPrefix)) {
+                let hexPart = text.substring(expectedPrefix.length);
+                const originalLength = hexPart.length;
+                const cleanedHexPart = hexPart.replace(/\s+/g, ''); // Remove all whitespace
 
-                 if (hexPart !== cleanedHexPart) {
-                     // Whitespace was removed, update textarea and cursor
-                     const diff = originalLength - cleanedHexPart.length;
-                     outputWaveform.value = expectedPrefix + cleanedHexPart;
-                     if (currentCursorPos !== -1) {
-                         const newCursorPos = Math.max(expectedPrefix.length, currentCursorPos - diff);
-                         try { outputWaveform.setSelectionRange(newCursorPos, newCursorPos); } catch (e) {}
-                     }
-                     hexPart = cleanedHexPart; // Use cleaned part for validation
-                 }
+                if (hexPart !== cleanedHexPart) {
+                    // Whitespace was removed, update textarea and cursor
+                    const diff = originalLength - cleanedHexPart.length;
+                    outputWaveform.value = expectedPrefix + cleanedHexPart;
+                    if (currentCursorPos !== -1) {
+                        const newCursorPos = Math.max(expectedPrefix.length, currentCursorPos - diff);
+                        try { outputWaveform.setSelectionRange(newCursorPos, newCursorPos); } catch (e) { }
+                    }
+                    hexPart = cleanedHexPart; // Use cleaned part for validation
+                }
 
-                 // Validate hex part
-                 if (hexRegex.test(hexPart)) {
-                     outputWaveform.classList.remove('invalid');
-                     const newData = [];
-                     let changed = false;
-                     try {
-                         for (let i = 0; i < currentLength; i++) {
-                             const hexSample = hexPart.substring(i * hexDigitsPerSample, (i + 1) * hexDigitsPerSample);
-                             const newVal = parseInt(hexSample, 16);
-                             // Check if value is valid for the mode
-                             const maxValidValue = currentWavMode === 'wav10' ? 15 : 255;
-                             if (newVal < 0 || newVal > maxValidValue || isNaN(newVal)) {
+                // Validate hex part
+                if (hexRegex.test(hexPart)) {
+                    outputWaveform.classList.remove('invalid');
+                    const newData = [];
+                    let changed = false;
+                    try {
+                        for (let i = 0; i < currentLength; i++) {
+                            const hexSample = hexPart.substring(i * hexDigitsPerSample, (i + 1) * hexDigitsPerSample);
+                            const newVal = parseInt(hexSample, 16);
+                            // Check if value is valid for the mode
+                            const maxValidValue = currentWavMode === 'wav10' ? 15 : 255;
+                            if (newVal < 0 || newVal > maxValidValue || isNaN(newVal)) {
                                 throw new Error(`Invalid value ${newVal} parsed from ${hexSample}`);
-                             }
-                             newData.push(newVal);
-                             if (i >= waveformData.length || waveformData[i] !== newVal) changed = true;
-                         }
-                         if (waveformData.length !== newData.length) changed = true;
+                            }
+                            newData.push(newVal);
+                            if (i >= waveformData.length || waveformData[i] !== newVal) changed = true;
+                        }
+                        if (waveformData.length !== newData.length) changed = true;
 
-                         if (changed) {
-                             waveformData = newData;
-                             isSquareActive = false; // If text changes, assume not square active
-                             // Redraw canvas based on new data from textarea
-                             redraw();
-                         }
-                     } catch (parseError) {
-                         console.error("Error parsing hex data:", parseError);
-                         outputWaveform.classList.add('invalid'); // Mark invalid if parsing fails
-                     }
-                 } else {
-                     // Does not match regex (wrong length or invalid characters)
-                     outputWaveform.classList.add('invalid');
-                 }
-             } else {
-                 // Prefix is wrong
-                 outputWaveform.classList.add('invalid');
-             }
+                        if (changed) {
+                            waveformData = newData;
+                            isSquareActive = false; // If text changes, assume not square active
+                            // Do not redraw immediately from text input to avoid jerky behaviour.
+                            // Redraw will happen naturally if mode changes or drawing occurs.
+                            // If a direct redraw is needed, it can be added back here.
+                            // redraw();
+                        }
+                    } catch (parseError) {
+                        console.error("Error parsing hex data:", parseError);
+                        outputWaveform.classList.add('invalid'); // Mark invalid if parsing fails
+                    }
+                } else {
+                    // Does not match regex (wrong length or invalid characters)
+                    outputWaveform.classList.add('invalid');
+                }
+            } else {
+                // Prefix is wrong
+                outputWaveform.classList.add('invalid');
+            }
         });
 
         // --- Mode/Length/Resolution/EditMode Change Listeners ---
         wavModeSelect.addEventListener('change', initializeWaveform);
         wavLengthInput.addEventListener('change', () => { if (currentWavMode === 'wav13') { initializeWaveform(); } });
         wavResolutionSelect.addEventListener('change', () => { if (currentWavMode === 'wav13') { initializeWaveform(); } });
-        editModeRadios.forEach(radio => { radio.addEventListener('change', (event) => {
-             const newMode = event.target.value;
-             if (newMode === currentEditMode) return; // No change
+        editModeRadios.forEach(radio => {
+            radio.addEventListener('change', (event) => {
+                const newMode = event.target.value;
+                if (newMode === currentEditMode) return; // No change
 
-             currentEditMode = newMode;
-             console.log("編集モード変更:", currentEditMode);
-             canvasInfo.innerHTML = currentEditMode === 'grid'
-                 ? `クリックまたはドラッグ/スワイプして波形を描画します。<br>中央線は振幅0を表します。`
-                 : `制御点を操作してベジェ曲線を作成・編集します。<br>点を追加するには曲線近くをクリックします。`;
+                currentEditMode = newMode;
+                console.log("編集モード変更:", currentEditMode);
+                canvasInfo.innerHTML = currentEditMode === 'grid'
+                    ? `クリックまたはドラッグ/スワイプして波形を描画します。<br>中央線は振幅0を表します。`
+                    : `制御点を操作してベジェ曲線を作成・編集します。<br>点を追加するには曲線近くをクリックします。`;
 
-             // Re-initialize waveform/canvas when switching modes
-             // This resets the canvas drawing and Bezier points if switching
-             initializeWaveform();
-             // updateEventListeners() is called within initializeWaveform
-             // redraw() is called within initializeWaveform
-         }); });
+                // Re-initialize waveform/canvas when switching modes
+                // This resets the canvas drawing and Bezier points if switching
+                initializeWaveform();
+                // updateEventListeners() is called within initializeWaveform
+                // redraw() is called within initializeWaveform
+            });
+        });
 
         // --- Initial Setup & Draw ---
         let isInitialized = false;
-        const initObserver = new ResizeObserver(()=>{
-             // Debounce resize slightly? Might not be necessary.
-             if (!isInitialized && canvas.clientWidth > 0){
-                  console.log("Initializing via ResizeObserver...");
-                  initializeWaveform();
-                  isInitialized = true;
-             } else if (isInitialized && canvas.clientWidth > 0){
-                  console.log("Redrawing due to resize...");
-                 // setupCanvas() is called within redraw if needed
-                 redraw();
-             }
-         });
+        const initObserver = new ResizeObserver(() => {
+            // Debounce resize slightly? Might not be necessary.
+            if (!isInitialized && canvas.clientWidth > 0) {
+                console.log("Initializing via ResizeObserver...");
+                initializeWaveform();
+                isInitialized = true;
+            } else if (isInitialized && canvas.clientWidth > 0) {
+                console.log("Redrawing due to resize...");
+                // setupCanvas() is called within redraw if needed
+                redraw();
+            }
+        });
         initObserver.observe(canvas);
         // Fallback initialization
-        window.addEventListener('load', ()=>{
-             if (!isInitialized && canvas.clientWidth > 0){
-                 console.warn("Fallback: Initializing on window.load");
-                 initializeWaveform();
-                 isInitialized = true;
-             } else if (!isInitialized) {
-                  console.error("Initialization failed: Canvas has no width on load.");
-             }
+        window.addEventListener('load', () => {
+            if (!isInitialized && canvas.clientWidth > 0) {
+                console.warn("Fallback: Initializing on window.load");
+                initializeWaveform();
+                isInitialized = true;
+            } else if (!isInitialized) {
+                console.error("Initialization failed: Canvas has no width on load.");
+                // Try to force initialization after a small delay
+                // setTimeout(() => {
+                //      if (!isInitialized && canvas.clientWidth > 0) {
+                //           console.warn("Delayed fallback initialization.");
+                //           initializeWaveform();
+                //           isInitialized = true;
+                //      } else if (!isInitialized) {
+                //            console.error("Delayed fallback failed.");
+                //      }
+                // }, 500);
+            }
         });
 
     </script>
 </body>
+
 </html>
