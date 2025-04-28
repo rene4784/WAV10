@@ -318,7 +318,7 @@ C D E F G A B < C</textarea>
         let currentMaxValue = 15; let currentCenterValue = 8; let currentQuantizeLevels = 16;
         let waveformData = [];
         let baseWidth = 320; let baseHeight = 170; let dpr = 1;
-        let cellWidth, stepHeight, centerY;
+        let cellWidth, centerY; // stepHeight is calculated locally in drawWaveform now
         let isDrawing = false; // For grid drawing
         let currentDuty = 50; let isDraggingDuty = false; let isSquareActive = false;
         let lastDrawX = null; let lastDrawY = null; // For grid interpolation
@@ -336,17 +336,31 @@ C D E F G A B < C</textarea>
                  return currentCenterValue;
              }
 
-             if (currentWavMode === 'wav10' || currentQuantizeLevels >= 256) {
-                 // Simple rounding for WAV10 or full 8-bit resolution
-                 return Math.max(0, Math.min(currentMaxValue, Math.round(rawValue)));
+             // --- Grid Drawing Input Mapping (Use visual steps) ---
+             // Map rawValue (0-currentMaxValue) to the closest visual grid step index [0, numSteps-1]
+             const hLineRes = (currentWavMode === 'wav13' && currentQuantizeLevels < 256) ? currentQuantizeLevels : currentResolution;
+             const numSteps = hLineRes > 0 ? hLineRes : 1;
+             let stepIndex;
+             if (currentMaxValue === (numSteps - 1)) {
+                 // Direct mapping (like WAV10)
+                 stepIndex = Math.round(rawValue);
+             } else {
+                 // Scale value to step index
+                 stepIndex = Math.round((rawValue / currentMaxValue) * (numSteps - 1));
              }
-             // For WAV13 with lower quantization
-             const steps = currentQuantizeLevels - 1;
-             if (steps <= 0) return currentCenterValue; // Avoid division by zero
-             const stepSize = currentMaxValue / steps;
-             const quantized = Math.round(rawValue / stepSize) * stepSize;
-             // Final round might be needed if stepSize results in non-integers, though unlikely for powers of 2
-             return Math.max(0, Math.min(currentMaxValue, Math.round(quantized)));
+             stepIndex = Math.max(0, Math.min(numSteps - 1, stepIndex)); // Clamp index
+
+             // Convert stepIndex back to the value range [0, currentMaxValue] for storing
+             let finalValue;
+             if (currentMaxValue === (numSteps - 1)) {
+                 finalValue = stepIndex; // Direct mapping
+             } else {
+                 // Scale step index back to value
+                 finalValue = Math.round((stepIndex / (numSteps - 1)) * currentMaxValue);
+             }
+
+             // Final clamp to ensure it's within the absolute bounds
+             return Math.max(0, Math.min(currentMaxValue, finalValue));
          }
 
         // --- Initialization and Mode Change ---
@@ -360,12 +374,18 @@ C D E F G A B < C</textarea>
             if (isWav13) {
                 currentLength = parseInt(wavLengthInput.value) || 64;
                 currentLength = Math.max(1, Math.min(1024, currentLength)); wavLengthInput.value = currentLength;
-                currentResolution = 256; currentMaxValue = 255; currentCenterValue = 128;
-                currentQuantizeLevels = parseInt(wavResolutionSelect.value) || 256;
+                currentResolution = 256; // Base resolution for calculation remains 256
+                currentMaxValue = 255;
+                currentCenterValue = 128;
+                currentQuantizeLevels = parseInt(wavResolutionSelect.value) || 256; // This affects visual grid and quantization step count
                 lengthControlDiv.classList.add('visible'); // Use class for visibility
                 resolutionControlDiv.classList.add('visible');
-            } else {
-                currentLength = 32; currentResolution = 16; currentMaxValue = 15; currentCenterValue = 8; currentQuantizeLevels = 16;
+            } else { // WAV10
+                currentLength = 32;
+                currentResolution = 16; // Resolution matches value range
+                currentMaxValue = 15;
+                currentCenterValue = 8;
+                currentQuantizeLevels = 16; // Quantization matches resolution
                 wavLengthInput.value = 32; // Reset hidden input too
                 wavResolutionSelect.value = "256"; // Reset hidden select
                 lengthControlDiv.classList.remove('visible');
@@ -400,78 +420,137 @@ C D E F G A B < C</textarea>
             canvas.width = Math.round(baseWidth * dpr); canvas.height = Math.round(baseHeight * dpr);
             ctx.resetTransform(); ctx.scale(dpr, dpr);
             cellWidth = baseWidth / currentLength;
-            // stepHeight uses target resolution for mapping, not necessarily quantization levels visually
-            stepHeight = baseHeight / currentResolution;
             centerY = baseHeight / 2;
+            // stepHeight is now calculated locally in drawWaveform and quantizeValue
         }
 
 
         // --- Drawing Functions ---
         function drawGrid() {
              ctx.lineWidth = 1 / dpr; const gridLineColor = getComputedStyle(document.documentElement).getPropertyValue('--grid-line-color').trim(); const centerLineColor = getComputedStyle(document.documentElement).getPropertyValue('--grid-center-line-color').trim(); const vLineStep = currentLength <= 64 ? 1 : (currentLength <= 128 ? 2 : (currentLength <= 256 ? 4 : 8)); ctx.strokeStyle = gridLineColor; for (let i = 0; i <= currentLength; i += vLineStep) { const x = Math.round(i * cellWidth); ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, baseHeight); ctx.stroke(); } if (currentLength % vLineStep !== 0) { const x = Math.round(currentLength * cellWidth); ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, baseHeight); ctx.stroke(); }
+
              // Draw horizontal lines based on effective quantization level for visual feedback
              const hLineRes = (currentWavMode === 'wav13' && currentQuantizeLevels < 256) ? currentQuantizeLevels : currentResolution;
              const hSteps = hLineRes > 0 ? hLineRes : 1; // Avoid division by zero
              const hStepHeight = baseHeight / hSteps; // Height per VISIBLE step
              for (let i = 0; i <= hSteps; i ++) { const y = Math.round(i * hStepHeight); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(baseWidth, y); ctx.stroke(); }
-             ctx.strokeStyle = centerLineColor; ctx.lineWidth = Math.max(1, 2 / dpr); ctx.beginPath(); const centerLineY = Math.round(centerY); ctx.moveTo(0, centerLineY); ctx.lineTo(baseWidth, centerLineY); ctx.stroke(); ctx.lineWidth = 1 / dpr;
+
+             // Draw center line
+             ctx.strokeStyle = centerLineColor; ctx.lineWidth = Math.max(1, 2 / dpr); ctx.beginPath(); const centerLineY = Math.round(centerY); ctx.moveTo(0, centerLineY); ctx.lineTo(baseWidth, centerLineY); ctx.stroke(); ctx.lineWidth = 1 / dpr; // Reset line width
         }
 
-        // === MODIFIED drawWaveform Function ===
+
+        // === REVISED drawWaveform Function (Grid Alignment) ===
         function drawWaveform() {
              ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--waveform-fill-color').trim();
-             const minRectWidth = 1 / dpr; // Minimum width to avoid invisible lines
+             const minRectWidth = 1 / dpr; // Minimum width
+             const minRectHeight = 1 / dpr; // Minimum height
+
+             // Calculate stepHeight based on the effective resolution for drawing grid lines
+             const hLineRes = (currentWavMode === 'wav13' && currentQuantizeLevels < 256) ? currentQuantizeLevels : currentResolution;
+             const numSteps = hLineRes > 0 ? hLineRes : 1;
+             const stepHeight = baseHeight / numSteps; // Height of one visual grid step
+             const centerLineY = centerY; // Precise center Y
 
              for (let i = 0; i < currentLength; i++) {
                  const value = (i < waveformData.length) ? waveformData[i] : currentCenterValue;
 
-                 // Calculate the Y coordinate corresponding to the waveform value
-                 // Y=0 is top, Y=baseHeight is bottom.
-                 // Value 0 maps to baseHeight, value currentMaxValue maps to 0.
-                 const valueY = baseHeight - (value / currentMaxValue) * baseHeight;
+                 // Ensure value is within the expected range [0, currentMaxValue]
+                 const clampedValue = Math.max(0, Math.min(currentMaxValue, value));
 
-                 let rectYStart, rectHeight;
+                 // Map the value to the corresponding visual grid step index [0, numSteps-1]
+                 let stepIndex;
+                 if (currentMaxValue === (numSteps - 1)) {
+                     // Direct mapping (like WAV10)
+                     stepIndex = clampedValue;
+                 } else {
+                     // Scale value to step index for modes where value range != numSteps
+                     stepIndex = Math.round((clampedValue / currentMaxValue) * (numSteps - 1));
+                 }
+                 stepIndex = Math.max(0, Math.min(numSteps - 1, stepIndex)); // Clamp index
 
-                 // Determine rectangle start and height based on comparison with centerY
+                 // Y coordinates of the top and bottom edges of the target grid cell
+                 // Remember Y=0 is top, Y=baseHeight is bottom
+                 const y_top_edge = baseHeight - (stepIndex + 1) * stepHeight;
+                 const y_bottom_edge = baseHeight - stepIndex * stepHeight;
+
+                 // Clamp edge coordinates to canvas boundaries (use floor/ceil to align with pixel grid better?)
+                 const clamped_y_top = Math.max(0, Math.floor(y_top_edge));
+                 const clamped_y_bottom = Math.min(baseHeight, Math.ceil(y_bottom_edge));
+
+                 // Determine the fill rectangle boundaries (topY, bottomY)
+                 let topY, bottomY;
+                 const roundedCenterLineY = Math.round(centerLineY); // Use rounded center for comparison
+
                  if (value >= currentCenterValue) {
-                     // Value is in the upper half (or exactly center)
-                     rectYStart = valueY;
-                     rectHeight = centerY - valueY;
+                     // Fill from center line up to the top edge of the cell
+                     topY = clamped_y_top;
+                     // Ensure bottom doesn't go above center line due to rounding
+                     bottomY = Math.min(roundedCenterLineY, clamped_y_bottom);
+                      // Correction: If value >= center, bottom should be the center line
+                     bottomY = roundedCenterLineY;
+
                  } else {
-                     // Value is in the lower half
-                     rectYStart = centerY;
-                     rectHeight = valueY - centerY;
+                     // Fill from center line down to the bottom edge of the cell
+                     // Ensure top doesn't go below center line
+                     topY = Math.max(roundedCenterLineY, clamped_y_top);
+                     // Correction: If value < center, top should be the center line
+                     topY = roundedCenterLineY;
+                     bottomY = clamped_y_bottom;
                  }
 
-                 // Calculate X position and width for the current step
+
+                 // Ensure topY <= bottomY after adjustments
+                  if (topY > bottomY) {
+                       // This might happen if center line rounding pushes boundaries across each other
+                       // e.g., if value is exactly center. Prioritize showing *something*.
+                      // If value is exactly center, draw the cell containing the center line?
+                      if (value === currentCenterValue) {
+                         // Find the step containing the center line
+                         const centerStepIndex = numSteps - 1 - Math.floor(centerLineY / stepHeight);
+                         topY = Math.max(0, Math.floor(baseHeight - (centerStepIndex + 1) * stepHeight));
+                         bottomY = Math.min(baseHeight, Math.ceil(baseHeight - centerStepIndex * stepHeight));
+                      } else {
+                          // If not exactly center, but rounding caused inversion, make it minimal height at center
+                          topY = roundedCenterLineY - minRectHeight / 2;
+                          bottomY = roundedCenterLineY + minRectHeight / 2;
+                      }
+                      // console.warn(`topY > bottomY detected for value ${value}. Adjusted to: ${topY} - ${bottomY}`);
+                  }
+
+                 // Calculate rectangle height
+                 let rectHeight = bottomY - topY;
+
+                 // Ensure minimum height for visibility only if the intended height was non-zero
+                 if (rectHeight < minRectHeight && Math.abs(clamped_y_bottom - clamped_y_top) >= minRectHeight) {
+                     // If the actual cell had height, but calculation resulted in < minRectHeight
+                     rectHeight = minRectHeight;
+                     if (value >= currentCenterValue) { // Fill was upwards
+                         bottomY = Math.min(baseHeight, topY + minRectHeight); // Adjust bottom down
+                     } else { // Fill was downwards
+                         topY = Math.max(0, bottomY - minRectHeight); // Adjust top up
+                     }
+                     // Recalculate clamped height
+                     rectHeight = bottomY - topY;
+                 }
+
+
+                 // Calculate X position and width
                  const rectX = Math.round(i * cellWidth);
-                 // Calculate width ensuring it doesn't overlap strangely due to rounding
                  const nextRectX = Math.round((i + 1) * cellWidth);
-                 const rectWidth = Math.max(minRectWidth, nextRectX - rectX);
+                 let rectWidth = Math.max(minRectWidth, nextRectX - rectX);
 
-                 // Ensure minimum height for visibility and clamp height
-                 rectHeight = Math.max(minRectWidth, Math.abs(rectHeight)); // Use absolute height
-
-                 // Ensure rectYStart is the top of the rectangle
-                 if (value < currentCenterValue) {
-                     rectYStart = centerY; // Starts at center for lower half
-                 } else {
-                     rectYStart = centerY - rectHeight; // Starts above center for upper half
-                 }
-
-
-                 // Clip drawing to canvas bounds just in case
-                 const finalRectY = Math.max(0, Math.min(baseHeight - minRectWidth, rectYStart));
-                 const finalRectBottom = Math.min(baseHeight, finalRectY + rectHeight);
-                 const finalRectHeight = Math.max(minRectWidth, finalRectBottom - finalRectY);
-
-
-                 if (finalRectHeight >= minRectWidth && rectWidth >= minRectWidth) {
-                     ctx.fillRect(rectX, finalRectY, rectWidth, finalRectHeight);
+                 // Final draw call, only if height is positive
+                 if (rectHeight >= minRectHeight && rectWidth >= minRectWidth) {
+                     ctx.fillRect(rectX, topY, rectWidth, rectHeight);
+                 } else if (rectHeight > 0 && rectWidth > 0) {
+                      // Draw even if slightly below min height if it's non-zero?
+                      // console.log(`Drawing small rect: h=${rectHeight.toFixed(2)} @ y=${topY.toFixed(2)}`)
+                      // ctx.fillRect(rectX, topY, rectWidth, rectHeight);
                  }
              }
          }
-         // === END MODIFIED drawWaveform Function ===
+         // === END REVISED drawWaveform Function ===
 
 
         function updateOutputTextarea() {
@@ -633,6 +712,12 @@ C D E F G A B < C</textarea>
              // Clamp Y to prevent extreme values before calculating value
              const clampedY = Math.max(0, Math.min(baseHeight, currentY));
 
+             // Calculate stepHeight based on the effective resolution
+             const hLineRes = (currentWavMode === 'wav13' && currentQuantizeLevels < 256) ? currentQuantizeLevels : currentResolution;
+             const numSteps = hLineRes > 0 ? hLineRes : 1;
+             const stepHeight = baseHeight / numSteps;
+
+
             if (lastDrawX !== null && lastDrawY !== null) {
                 const x0 = lastDrawX; const y0 = lastDrawY; const x1 = currentX; const y1 = clampedY; // Use clamped Y for interpolation end
                 let startIndex = Math.floor(x0 / cellWidth); let endIndex = Math.floor(x1 / cellWidth);
@@ -642,20 +727,31 @@ C D E F G A B < C</textarea>
 
                 if (startIndex > endIndex) { [startIndex, endIndex] = [endIndex, startIndex]; }
 
-                const numSteps = Math.max(1, Math.abs(endIndex - startIndex)); // Use absolute difference
+                const numInterpSteps = Math.max(1, Math.abs(endIndex - startIndex)); // Use absolute difference
 
-                 for (let step = 0; step <= numSteps; step++) {
+                 for (let step = 0; step <= numInterpSteps; step++) {
                       const i = startIndex + step;
                       // Ensure index i is within bounds
                       if (i >= currentLength) continue;
 
-                      let t_idx = numSteps === 0 ? 0.5 : step / numSteps; // Use 0.5 for single step? Or just use end val?
+                      let t_idx = numInterpSteps === 0 ? 0.5 : step / numInterpSteps;
                       const interpolatedY = y0 + (y1 - y0) * t_idx;
                       const clampedInterpolatedY = Math.max(0, Math.min(baseHeight, interpolatedY)); // Clamp intermediate Y
 
-                      // Map Y to value (Y=0 is top, corresponds to max value)
-                      const rawValue = (baseHeight - clampedInterpolatedY) / baseHeight * currentMaxValue;
-                      const finalValue = quantizeValue(rawValue);
+                      // Map interpolated Y to a value based on the grid step it falls into
+                      // Y=0 is top, Y=baseHeight is bottom
+                      const targetStepIndex = numSteps - 1 - Math.floor(clampedInterpolatedY / stepHeight);
+                      const clampedStepIndex = Math.max(0, Math.min(numSteps - 1, targetStepIndex));
+
+                      // Convert step index back to value range
+                      let rawValue;
+                      if (currentMaxValue === (numSteps - 1)) {
+                         rawValue = clampedStepIndex; // Direct mapping
+                      } else {
+                         rawValue = (clampedStepIndex / (numSteps - 1)) * currentMaxValue; // Scale back
+                      }
+
+                      const finalValue = quantizeValue(rawValue); // Apply final quantization/clamping
 
                       if (i >= 0 && i < waveformData.length && waveformData[i] !== finalValue) {
                           waveformData[i] = finalValue;
@@ -665,9 +761,19 @@ C D E F G A B < C</textarea>
             } else { // Handle single point draw
                 const gridX = Math.floor(currentX / cellWidth);
                 if(gridX >= 0 && gridX < currentLength) {
-                     // Map Y to value
-                     const rawValue = (baseHeight - clampedY) / baseHeight * currentMaxValue;
-                     const finalValue = quantizeValue(rawValue);
+                     // Map Y to value based on grid step
+                      const targetStepIndex = numSteps - 1 - Math.floor(clampedY / stepHeight);
+                      const clampedStepIndex = Math.max(0, Math.min(numSteps - 1, targetStepIndex));
+
+                      let rawValue;
+                      if (currentMaxValue === (numSteps - 1)) {
+                         rawValue = clampedStepIndex; // Direct mapping
+                      } else {
+                         rawValue = (clampedStepIndex / (numSteps - 1)) * currentMaxValue; // Scale back
+                      }
+
+                     const finalValue = quantizeValue(rawValue); // Apply final quantization/clamping
+
                     if(waveformData[gridX] !== finalValue) { waveformData[gridX] = finalValue; dataChanged = true; }
                 }
             }
@@ -876,7 +982,8 @@ C D E F G A B < C</textarea>
                          if (changed) {
                              waveformData = newData;
                              isSquareActive = false; // If text changes, assume not square active
-                             redraw(); // Redraw canvas based on new data
+                             // Redraw canvas based on new data from textarea
+                             redraw();
                          }
                      } catch (parseError) {
                          console.error("Error parsing hex data:", parseError);
@@ -936,16 +1043,6 @@ C D E F G A B < C</textarea>
                  isInitialized = true;
              } else if (!isInitialized) {
                   console.error("Initialization failed: Canvas has no width on load.");
-                  // Try to force initialization after a small delay
-                  // setTimeout(() => {
-                  //      if (!isInitialized && canvas.clientWidth > 0) {
-                  //           console.warn("Delayed fallback initialization.");
-                  //           initializeWaveform();
-                  //           isInitialized = true;
-                  //      } else if (!isInitialized) {
-                  //            console.error("Delayed fallback failed.");
-                  //      }
-                  // }, 500);
              }
         });
 
